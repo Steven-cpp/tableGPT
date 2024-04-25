@@ -38,7 +38,7 @@
             "Rule": "P1"
         }
     },
-    "Lightspeed FS": {
+    "LightSpeed FS": {
         "TotalCost": {
             "Source": "Total Cost USO",
             "Sum": 25948315,
@@ -64,6 +64,16 @@
         "Ownership": {
             "Source": "Current Ownership",
             "Sum": 6.966,
+            "Rule": "P1"
+        },
+        "Total": {
+            "Source": "Total",
+            "Sum": 611779200,
+            "Rule": "P1"
+        },
+        "TotalCost": {
+            "Source": "Invested",
+            "Sum": 615299303,
             "Rule": "P1"
         }
     }
