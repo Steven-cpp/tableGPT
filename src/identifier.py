@@ -9,9 +9,8 @@ def check_p1(df: pd.DataFrame, config: dict, metric: str) -> pd.Series | None:
     if 'ColumnIndex' in rules:
         return df.iloc[:, rules['ColumnIndex']]
     namePattern = rules['ColumnNamePattern']
-    valuePattern = rules['ColumnValuePattern'] if 'ColumnValuePattern' in rules else None
     
-    options = check_rule(check_rule(df, namePattern, type="name", p=1), valuePattern, type="value", p=2)
+    options = check_rule(df, namePattern, type="name", p=1)
     if options is None or len(options.columns) == 0:
         return None
     
@@ -24,7 +23,14 @@ def check_p1(df: pd.DataFrame, config: dict, metric: str) -> pd.Series | None:
 
     
 def check_p2(df: pd.DataFrame, config: dict, metric: str) -> pd.DataFrame | None:
-    pass        
+    rules = config[metric]
+    namePattern = rules['ColumnNamePattern']
+    
+    options = check_rule(df, namePattern, type="name", p=2)
+    if options is None or len(options.columns) == 0:
+        return None
+    return options
+            
 
 
 def check_rule(df: pd.DataFrame, pat: dict, type: str, p:int) -> pd.DataFrame | None:
@@ -50,7 +56,7 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
     if missing_fields:
         raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
     if rule['Priority'] != p:
-        return df
+        return None
     
     # 1. Set method and pattern
     isRegex = False if 'isRegex' not in rule else rule['isRegex']
