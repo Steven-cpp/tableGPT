@@ -17,18 +17,24 @@ def preprocess_raw(df: pd.DataFrame) -> pd.DataFrame:
 def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     numeric_cols = df.columns[1:]
 
-    # 1. Numeric values conversion
+    # 1. Convert percentage to floating number
+    if 'Ownership' in df.columns:
+        df['Ownership'] = df['Ownership'].str.rstrip('% ').astype(float) / 100
+
+    # 2. Other Numeric values conversion
     for col in numeric_cols:
         df[col] = df[col].replace('[$,]', '', regex=True)\
                   .replace(r'\((.+?)\)', r'-\1', regex=True)
         df[col] = pd.to_numeric(df[col], errors='coerce')
     
-    # 2. Remove rows with all other non-numeric columns
+    # 3. Remove rows with all other non-numeric columns
     df.replace('', np.nan, inplace=True)
     df = df.dropna(subset=numeric_cols, how='all')
 
-    # 3. Remove rows of empty company name or contain ['Total', 'Investment']
-    df = df[~df[df.columns[0]].str.contains('Total|Investment', case=False, na=False)]
+    # 4. Remove rows of empty company name or contain ['Total', 'Investment']
+    df = df[~(df[df.columns[0]].str.contains('Total|Realized', case=False, na=False)\
+            | (df.iloc[:, 0].isna()))]
+    
     return df
 
 def plot_summary(df: pd.DataFrame, gp: str, n: int) -> None:
@@ -61,8 +67,8 @@ def extract_port(rule_path, test_path, csv_base_path='./res/final/'):
         plot_summary(pd.DataFrame(summary), gp_type, len(case_config[gp_type].keys()))
 
         print()
-        # print('=' * 23 + f' Final Table of {gp_type} ' + '=' * 23)
-        # print(port)
+        print('=' * 23 + f' Final Table of {gp_type} ' + '=' * 23)
+        print(port)
 
 
 def __extract_port(csv_path: str, rule_config: dict, case_config: dict) -> tuple:
