@@ -1,13 +1,20 @@
 import argparse
 import logging
 import json
-import re
+import os
 import pandas as pd
 import numpy as np
 from identifier import check_p1, check_p2
 
+def preprocess_raw(df: pd.DataFrame) -> pd.DataFrame:
+    # 1. Make sure the first column is company name
+    # Might require some efforts, but don't see any real cases for now
 
-def preprocess(df: pd.DataFrame) -> pd.DataFrame:
+    # 2. Remove the table header, which is commonly in UPPER_CLASS
+    pass
+
+# Clean the extracted table to be consumed
+def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     numeric_cols = df.columns[1:]
 
     # 1. Numeric values conversion
@@ -39,16 +46,41 @@ def get_args():
     parser.add_argument('--test_cases_path', type=str, help='Path to JSON test cases file.')  
     return parser.parse_args()  
 
-def main():
-    csv_name = 'Sequoia PS_0'
-    path_csv = f'./res/final/{csv_name}.csv'
-    gp = re.sub('[ ]?[\(.*\)]?_\d', '', csv_name)
 
-    rule_config = json.load(open('config.json'))
-    case_config = json.load(open('./test/case.json'))
+def extract_port(rule_path, test_path, csv_base_path='./res/final/'):
+    rule_config = json.load(open(rule_path))
+    case_config = json.load(open(test_path))
 
-    truth = case_config[gp]
-    df = pd.read_csv(path_csv)
+    for gp_type in case_config:
+        fnames = [ i for i in os.listdir(csv_base_path) if gp_type in i and i.endswith('.csv')]
+        if len(fnames) != 1:
+            raise ValueError(f'Invalid gp_type: {gp_type}, cannot find it under {csv_base_path}')
+        port, summary = __extract_port(csv_base_path + fnames[0], rule_config, case_config[gp_type])
+        
+        print()
+        plot_summary(pd.DataFrame(summary), gp_type, len(case_config[gp_type].keys()))
+
+        print()
+        # print('=' * 23 + f' Final Table of {gp_type} ' + '=' * 23)
+        # print(port)
+
+
+def __extract_port(csv_path: str, rule_config: dict, case_config: dict) -> tuple:
+    """
+    Extract target metrics from GP report extracted tables specified by `case_config`.
+
+    Args:
+        csv_path (str): The path of the potential port summary table, extracted from GP report
+        rule_config (dict): Identifier rules configuration.
+        case_config (dict): Test case configuration.
+
+    Returns:
+        tuple: A tuple containing two pandas DataFrames:
+            - DataFrame 1: The extracted port summary.
+            - DataFrame 2: The extraction summary table.
+    """
+    df = pd.read_csv(csv_path)
+    df.columns = df.columns.str.replace('*', '', regex=False)
 
     res = pd.DataFrame()
     summary = {
@@ -69,7 +101,7 @@ def main():
                     continue
                 summary['Rule'].append('P2')
                 if len(col.columns) > 1:
-                    print(f'WARNING: {metric} of {gp} multi-match via P2 rule: {col.columns}')
+                    print(f'WARNING: {metric} of {csv_path} multi-match via P2 rule: {col.columns}')
                     idx = input("Select the correct one:")
                     col = col.iloc[:, idx]
                 else:
@@ -83,8 +115,8 @@ def main():
             # Append items into summary table
             summary['Target'].append(metric)
             summary['Src'].append(col.name)
-            srcGT = truth[metric]['Source'] if metric in truth else np.nan
-            sumGT = truth[metric]['Sum'] if metric in truth else np.nan
+            srcGT = case_config[metric]['Source'] if metric in case_config else np.nan
+            sumGT = case_config[metric]['Sum'] if metric in case_config else np.nan
             summary['SrcGT'].append(srcGT)
             summary['SumGT'].append(sumGT)
             col.name = metric
@@ -97,18 +129,15 @@ def main():
     if res.empty:
         return summary
     
-    port = preprocess(res)
+    port = preprocess_identified(res)
     sumArr = [np.nan] + list(port.sum(numeric_only=True))
     summary['Sum'] = sumArr
 
-    print()
-    plot_summary(pd.DataFrame(summary), gp, len(truth.keys()))
-
-    print()
-    print('=' * 23 + f' Final Table of {gp} ' + '=' * 23)
-    print(port)
+    return port, summary
     
 
 if __name__ == "__main__":
     logging.info('Extracting Portfolio Summary from GP Reports')
-    main()
+    rule_path = 'config.json'
+    test_path = './test/case.json'
+    extract_port(rule_path, test_path)
