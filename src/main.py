@@ -4,7 +4,7 @@ import json
 import re
 import pandas as pd
 import numpy as np
-from identifier import check_p1
+from identifier import check_p1, check_p2
 
 
 def preprocess(df: pd.DataFrame) -> pd.DataFrame:
@@ -61,20 +61,34 @@ def main():
     }
     
     for metric in rule_config:
-        # summary['SrcGT'].append()
-        # summary['SumGT'].append()
         try:
             col = check_p1(df, rule_config, metric)
-            if col is not None:
+            if col is None:
+                col = check_p2(df, rule_config, metric)
+                if col is None:
+                    continue
+                summary['Rule'].append('P2')
+                if len(col.columns) > 1:
+                    print(f'WARNING: {metric} of {gp} multi-match via P2 rule: {col.columns}')
+                    idx = input("Select the correct one:")
+                    col = col.iloc[:, idx]
+                else:
+                    col = col.iloc[:, 0]
+            else:
                 summary['Rule'].append('P1')
-                summary['Target'].append(metric)
-                summary['Src'].append(col.name)
-                srcGT = truth[metric]['Source'] if metric in truth else np.nan
-                sumGT = truth[metric]['Sum'] if metric in truth else np.nan
-                summary['SrcGT'].append(srcGT)
-                summary['SumGT'].append(sumGT)
-                col.name = metric
-                res = pd.concat([res, col], axis=1)
+
+            # Remove the columns after matching
+            df.drop(columns=[col.name], inplace=True)
+
+            # Append items into summary table
+            summary['Target'].append(metric)
+            summary['Src'].append(col.name)
+            srcGT = truth[metric]['Source'] if metric in truth else np.nan
+            sumGT = truth[metric]['Sum'] if metric in truth else np.nan
+            summary['SrcGT'].append(srcGT)
+            summary['SumGT'].append(sumGT)
+            col.name = metric
+            res = pd.concat([res, col], axis=1)
 
         except ValueError as e:
             logging.warning('Multi-Match: %s: %s', metric, e)
