@@ -1,0 +1,70 @@
+{
+    "Sequoia PS": {
+        "TotalCost": {
+            "Source": "Total Cost",
+            "Sum": 796405693,
+            "Rule": "P1"
+        },
+        "UnrealizedValue": {
+            "Source": "Unrealized Fair Value",
+            "Sum": 503253280,
+            "Rule": "P1"
+        },
+        "RealizedValue": {
+            "Source": "Realized Proceeds",
+            "Sum": 178378862,
+            "Rule": "P1"
+        }        
+    },
+    "General Atlantic PS": {
+        "UnrealizedValue": {
+            "Source": "LP Net Value",
+            "Sum": 29318,
+            "Rule": "P1"
+        },
+        "RealizedValue": {
+            "Source": "LP Net Proceeds",
+            "Sum": 4198,
+            "Rule": "P1"
+        },
+        "Total": {
+            "Source": "LP Net Value / Proceeds",
+            "Sum": 33520,
+            "Rule": "P1"
+        },
+        "TotalCost": {
+            "Source": "Basis",
+            "Sum": 18953,
+            "Rule": "P1"
+        }
+    },
+    "Lightspeed FS": {
+        "TotalCost": {
+            "Source": "Total Cost USO",
+            "Sum": 25948315,
+            "Rule": "P1"
+        },
+        "Shares": {
+            "Source": "SCHEDULE OF INVESTMENTS Securities",
+            "Sum": 2056842,
+            "Rule": "P1"
+        },
+        "UnrealizedValue": {
+            "Source": "Market Value USO",
+            "Sum": 42599279,
+            "Rule": "P1"
+        }
+    },
+    "Battery Ventures": {
+        "UnrealizedValue": {
+            "Source": "Valuation",
+            "Sum": 611779200,
+            "Rule": "P1"
+        },
+        "Ownership": {
+            "Source": "Current Ownership",
+            "Sum": 6.966,
+            "Rule": "P1"
+        }
+    }
+}

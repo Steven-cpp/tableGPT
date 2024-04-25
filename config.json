@@ -1,0 +1,99 @@
+{  
+	"CompanyName":   
+    {  
+		"ColumnIndex": 1
+	},  
+    "TotalCost":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Total Cost", "Total Invested", "Total Basis"],
+                "LookAround": "Total",
+                "Method": "Contain",
+                "Priority": 1
+            },
+            {
+                "Patterns": ["Cost", "Invested", "Basis"],
+                "Method": "Contain",
+                "Priority": 2
+            }
+        ]
+    },
+    "Ownership":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["own"],
+                "Method": "Contain",
+                "Priority": 1
+            }
+        ],
+        "ColumnValuePattern":
+        [
+            {
+                "Patterns": ["%"],
+                "Method": "Contain",
+                "Priority": 1
+            }
+        ]
+    },
+    "Shares":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Securities", "Shares"],
+                "Method": "Contain",
+                "Priority": 1
+            }
+        ]
+    },
+    "UnrealizedValue":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Fair Value", "FV", "Total Unrealized", "Valuation", "Unrealized Value"],
+                "Method": "Contain",
+                "LookAround": "Unrealized",
+                "Priority": 1
+            }
+        ]
+    },
+    "RealizedValue":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Proceeds"],
+                "Method": "Contain",
+                "LookAround": "Realized",
+                "Priority": 1
+            }
+        ]
+    },
+    "Total":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Total", "Total Value"],
+                "Method": "Match",
+                "Priority": 1
+            },
+            {
+                "Patterns": ["Total Realized .* Unrealized .*"],
+                "Method": "Match",
+                "isRegex": true,
+                "Priority": 1
+            },
+            {
+                "Patterns": ["Total"],
+                "Method": "Contain",
+                "Priority": 2
+            }
+        ]
+    }
+}
