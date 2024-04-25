@@ -15,7 +15,7 @@ def check_p1(df: pd.DataFrame, config: dict, metric: str) -> pd.Series | None:
         return None
     
     if len(options.columns) > 1:
-        raise ValueError('P1 Rule Multi-Match: rule: %s, matches: %s', namePattern, options.columns)
+        raise ValueError(f'P1 Rule Multi-Match: rule: {namePattern}, matches: {list(options.columns)}')
         
     else:
         return options.iloc[:, 0]
@@ -89,6 +89,8 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
         elif len(filtered_cols) == 0:
             # 1. Generate the new pattern
             patterns_look = [pattern.replace(key, '').strip() for pattern in patterns if key in pattern]
+            if not patterns_look:
+                return None
             # 2. Find if there are any matches with the new pattern
             if rule['Method'] == 'Match':
                 filtered_cols = df.columns[columns_lower.isin(patterns_look)]
