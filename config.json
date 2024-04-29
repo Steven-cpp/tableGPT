@@ -55,7 +55,7 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Fair Value", "FV", "Total Unrealized", "Valuation", "Unrealized Value"],
+                "Patterns": ["Fair Value", "FV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value"],
                 "Method": "Contain",
                 "LookAround": "Unrealized",
                 "Priority": 1
