@@ -13,6 +13,7 @@ def preprocess_raw(df: pd.DataFrame) -> pd.DataFrame:
     # 2. Remove the table header, which is commonly in UPPER_CLASS
     pass
 
+
 # Clean the extracted table to be consumed
 def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     numeric_cols = df.columns[1:]
@@ -35,6 +36,8 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     df = df[~(df[df.columns[0]].str.contains('Total|Realized', case=False, na=False)\
             | (df.iloc[:, 0].isna()))]
     
+    
+    
     return df
 
 def plot_summary(df: pd.DataFrame, gp: str, n: int) -> None:
@@ -53,22 +56,61 @@ def get_args():
     return parser.parse_args()  
 
 
-def extract_port(rule_path, test_path, csv_base_path='./res/final/'):
+def extract_port(rule_path, test_path, base_path='./res/final/'):
+    """_summary_
+
+    Args:
+        rule_path (_type_): _description_
+        test_path (_type_): _description_
+        base_path (str, optional): _description_. Defaults to './res/final/'.
+
+    Raises:
+        ValueError: _description_
+    """
     rule_config = json.load(open(rule_path))
     case_config = json.load(open(test_path))
+    # ports, period = []
 
     for gp_type in case_config:
-        fnames = [ i for i in os.listdir(csv_base_path) if gp_type in i and i.endswith('.csv')]
-        if len(fnames) != 1:
-            raise ValueError(f'Invalid gp_type: {gp_type}, cannot find it under {csv_base_path}')
-        port, summary = __extract_port(csv_base_path + fnames[0], rule_config, case_config[gp_type])
+        _case = case_config[gp_type]
+        gp_dir = [name for name in os.listdir(base_path) \
+                if os.path.isdir(os.path.join(base_path, name)) and gp_type in name]
+        if len(gp_dir) != 1:
+            print(f'Invalid GP Type: {gp_type}, multiple matches or cannot find the folder under {base_path}')
+            continue
         
-        print()
-        plot_summary(pd.DataFrame(summary), gp_type, len(case_config[gp_type].keys()))
+        gp_dir = gp_dir[0]
+        fnames = [ i for i in os.listdir(os.path.join(base_path, gp_dir)) if i.endswith('.csv')]
 
-        print()
-        print('=' * 23 + f' Final Table of {gp_type} ' + '=' * 23)
-        print(port)
+        for fname in fnames:
+            port, summary = __extract_port(os.path.join(base_path, gp_dir, fname), rule_config, _case)
+            if port.empty or len(port.columns) < 3:
+                print(f'Ignore invalid table {fname}.')
+                continue
+
+            if summary.empty:
+                print(f'Warning: Failed to extract metrics from {fnames[0]}')
+                continue
+
+            # Append unmatched metrics at the end
+            gt_targets = set(_case.keys())
+            fp = gt_targets.difference(set(summary['Target']))
+            for i in fp:
+                fp_row = pd.Series({'SrcGT': _case[i]['Source'], 
+                                    'SumGT': _case[i]['Sum'],
+                                    'Rule': _case[i]['Rule'],
+                                    'Target': i})
+                fp_row = fp_row.reindex(summary.columns, fill_value=np.nan)
+                summary = pd.concat([summary, fp_row.to_frame().T], ignore_index=True)
+
+            # Show the extraction summary table
+            print()
+            plot_summary(summary, fname, len(gt_targets))
+
+            # Show the extracted portfolio table
+            print()
+            print('=' * 23 + f' Final Table of {gp_type} ' + '=' * 23)
+            print(port)
 
 
 def __extract_port(csv_path: str, rule_config: dict, case_config: dict) -> tuple:
@@ -85,8 +127,23 @@ def __extract_port(csv_path: str, rule_config: dict, case_config: dict) -> tuple
             - DataFrame 1: The extracted port summary.
             - DataFrame 2: The extraction summary table.
     """
-    df = pd.read_csv(csv_path)
+    try:
+        df = pd.read_csv(csv_path)
+    except pd.errors.ParserError as e:
+        print(f'Warning: Failed to read {csv_path}: {e}')
+        return pd.DataFrame(), pd.DataFrame()
+    
+    # if len(df) < 5:
+    #     return pd.DataFrame(), pd.DataFrame()
+    
     df.columns = df.columns.str.replace('*', '', regex=False)
+    df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
+
+    is_layered = df.apply(lambda x: x.str.contains('Series', case=False).any()\
+                          if x.dtype == 'O' else False, axis=0).any()
+    if is_layered:
+        print(f'Warning: Unsupported Report Type: {csv_path} may be splitted by series.')
+        return pd.DataFrame(), pd.DataFrame()
 
     res = pd.DataFrame()
     summary = {
@@ -108,7 +165,7 @@ def __extract_port(csv_path: str, rule_config: dict, case_config: dict) -> tuple
                 summary['Rule'].append('P2')
                 if len(col.columns) > 1:
                     print(f'WARNING: {metric} of {csv_path} multi-match via P2 rule: {col.columns}')
-                    idx = input("Select the correct one:")
+                    idx = int(input("Select the correct one:"))
                     col = col.iloc[:, idx]
                 else:
                     col = col.iloc[:, 0]
@@ -133,14 +190,14 @@ def __extract_port(csv_path: str, rule_config: dict, case_config: dict) -> tuple
     
     # If no columns were matched, return an empty DataFrame
     if res.empty:
-        return summary
+        return pd.DataFrame(), pd.DataFrame()
     
     port = preprocess_identified(res)
     sumArr = [np.nan] + list(port.sum(numeric_only=True))
     summary['Sum'] = sumArr
 
-    return port, summary
-    
+    return port, pd.DataFrame(summary)
+  
 
 if __name__ == "__main__":
     logging.info('Extracting Portfolio Summary from GP Reports')
