@@ -1,4 +1,5 @@
 import re
+import logging
 import pandas as pd
 
 req_fields = ["Patterns", "Method", "Priority"]
@@ -38,10 +39,10 @@ def check_p2(df: pd.DataFrame, config: dict, metric: str) -> pd.DataFrame | None
 
 def check_rule(df: pd.DataFrame, pat: dict, type: str, p:int) -> pd.DataFrame | None:
     if pat is None:
-        print(f'Warning: `pat` is None while checking {type} rule over {df.columns}')
+        logging.warning('`pat` is None while checking %s rule over %s', type, df.columns)
         return df
     if df is None:
-        print(f'Warning: `df` is None while checking {type} rule {pat}')
+        logging.warning('`df` is None while checking %s rule %s', type, pat)
         return None
     if type.lower() not in ['name', 'value']:
         raise ValueError('Invalid Parameter Type: type should be either `name` or `value`')
@@ -106,7 +107,7 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
         res = []
         for i, col_id in enumerate(filtered_col_idxs):
             if col_id == 0 or col_id == len(df.columns) - 1:
-                print(f'Warning: The LookAround is taken at the side of the table: \
+                logging.warning(f'The LookAround is taken at the side of the table: \
                         col_id = {col_id}, col_name = {filtered_cols[i]}')
                 continue
             if key in columns_lower[col_id - 1] or key in columns_lower[col_id + 1]:
