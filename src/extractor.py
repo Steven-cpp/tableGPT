@@ -1,17 +1,17 @@
 from adobe.pdfservices.operation.auth.credentials import Credentials
-from adobe.pdfservices.operation.exception.exceptions import ServiceApiException, ServiceUsageException, SdkException
 from adobe.pdfservices.operation.execution_context import ExecutionContext
 from adobe.pdfservices.operation.io.file_ref import FileRef
 from adobe.pdfservices.operation.pdfops.extract_pdf_operation import ExtractPDFOperation
 from adobe.pdfservices.operation.pdfops.options.extractpdf.extract_pdf_options import ExtractPDFOptions
+from adobe.pdfservices.operation.pdfops.options.extractpdf.table_structure_type import TableStructureType
 from adobe.pdfservices.operation.pdfops.options.extractpdf.extract_element_type import ExtractElementType
+from adobe.pdfservices.operation.pdfops.options.extractpdf.extract_renditions_element_type import ExtractRenditionsElementType
 
 from dotenv import load_dotenv
 import os
 import pandas as pd
 import time
 import zipfile
-import openpyxl
 
 
 # Extract tables from pdfs under given dir
@@ -22,7 +22,7 @@ def extract_table(directory: str, cont: ExecutionContext):
         fn = os.fsdecode(file)
         if not fn.endswith('pdf'):
             continue
-        print('*'*8 + f' {idx}: Extracting file {fn} ' + '*'*8)
+        print('*'*8 + f' {idx}: Extracting tables from {fn} ' + '*'*8)
         #Set operation input from a source file.
         source = FileRef.create_from_local_file(os.path.join(directory, fn))
         extract_pdf_operation = ExtractPDFOperation.create_new()
@@ -30,8 +30,10 @@ def extract_table(directory: str, cont: ExecutionContext):
 
         #Build ExtractPDF options and set them into the operation
         extract_pdf_options: ExtractPDFOptions = ExtractPDFOptions.builder() \
-            .with_element_to_extract(ExtractElementType.TABLES) \
+            .with_element_to_extract(ExtractElementType.TABLES)\
+            .with_table_structure_format(TableStructureType.CSV) \
             .build()
+
         extract_pdf_operation.set_options(extract_pdf_options)
 
         #Execute the operation.
@@ -44,29 +46,25 @@ def extract_table(directory: str, cont: ExecutionContext):
         print(f'Table extraction of {fn} finishes: {int(end - start)} sec.')
     
     
-# Unzip the package obtained via API into csv format
-EXCEL_NL = "_x000D_"
-def zip2csv(src: str):
+# Unzip the package obtained via API and rename it
+def unzip(src: str):
     dest_csv = './res/final'
     for file in os.listdir(src):
         zipFn = os.fsdecode(file)
         if not zipFn.endswith('zip'):
             continue
-        dest = f'./res/{zipFn[:-4]}/'
-        zipPath = os.path.join(src, zipFn)
-        with zipfile.ZipFile(zipPath, 'r') as zipFile:
-            zipFile.extractall(dest)
-        os.remove(zipPath)
-        if not os.path.exists(os.path.join(dest, 'tables')):
-            print(f'No Table Extracted from {dest}')
+        zip_path = os.path.join(src, zipFn)
+        ext_path = f'./res/{zipFn[:-4]}/'
+        with zipfile.ZipFile(zip_path, 'r') as zipFile:
+            zipFile.extractall(ext_path)
+        os.remove(zip_path)
+        if not os.path.exists(os.path.join(ext_path, 'tables')):
+            print(f'No Table Extracted from {ext_path}')
             continue
-        for idx, tab in enumerate(os.listdir(os.path.join(dest, 'tables'))):
-            tabFn = os.fsdecode(tab)
-            df = pd.read_excel(os.path.join(dest, 'tables', tabFn))
-            df.columns = df.columns.str.replace(EXCEL_NL, "").str.replace('[^\x00-\x7F]', '', regex=True).str.replace('nan', '')
-            for col in df.columns:
-                df[col] = df[col].astype('str').str.replace(EXCEL_NL, "").str.replace('[^\x00-\x7F]', '', regex=True).str.replace('nan', '')
-            df.to_csv(os.path.join(dest_csv, f'{zipFn[:-4]}_{idx}.csv'))
+        
+        for idx, tab in enumerate(sorted(os.listdir(os.path.join(ext_path, 'tables')))):
+            os.rename(os.path.join(ext_path, 'tables', tab), os.path.join(dest_csv, f'{zipFn[:-4]}_{idx}.csv'))
+
         print(f'{zipFn} extraction finished')
     
     
@@ -85,7 +83,7 @@ if __name__ == "__main__":
     execution_context = ExecutionContext.create(credentials)
     
     extract_table('./docs', execution_context)
-    zip2csv('./res')
+    unzip('./res')
 
 
 
