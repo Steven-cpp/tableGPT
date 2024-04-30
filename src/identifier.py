@@ -5,6 +5,9 @@ req_fields = ["Patterns", "Method", "Priority"]
 
     
 def check_p1(df: pd.DataFrame, config: dict, metric: str) -> pd.Series | None:
+    if len(df.columns) < 4:
+        return None
+
     rules = config[metric]
     if 'ColumnIndex' in rules:
         return df.iloc[:, rules['ColumnIndex']]
@@ -20,10 +23,11 @@ def check_p1(df: pd.DataFrame, config: dict, metric: str) -> pd.Series | None:
     else:
         return options.iloc[:, 0]
 
-
     
 def check_p2(df: pd.DataFrame, config: dict, metric: str) -> pd.DataFrame | None:
     rules = config[metric]
+    if 'ColumnNamePattern' not in rules:
+        return None
     namePattern = rules['ColumnNamePattern']
     
     options = check_rule(df, namePattern, type="name", p=2)
@@ -31,7 +35,6 @@ def check_p2(df: pd.DataFrame, config: dict, metric: str) -> pd.DataFrame | None
         return None
     return options
             
-
 
 def check_rule(df: pd.DataFrame, pat: dict, type: str, p:int) -> pd.DataFrame | None:
     if pat is None:
@@ -48,7 +51,6 @@ def check_rule(df: pd.DataFrame, pat: dict, type: str, p:int) -> pd.DataFrame | 
             continue
         return options
     return None
-
 
 
 def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | None:
@@ -110,8 +112,6 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
             if key in columns_lower[col_id - 1] or key in columns_lower[col_id + 1]:
                 res.append(df.columns[col_id])
         return df[res]
-    
-
     return df[filtered_cols]
         
 def __check_rule_value(df: pd.DataFrame, rule: dict) -> pd.DataFrame | None:
