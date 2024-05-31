@@ -1,9 +1,9 @@
 {  
-	"CompanyName":   
+	"company_name":   
     {  
 		"ColumnIndex": 0
 	},  
-    "TotalCost":
+    "total_cost":
     {
         "ColumnNamePattern":
         [
@@ -20,7 +20,7 @@
             }
         ]
     },
-    "Ownership":
+    "ownership":
     {
         "ColumnNamePattern":
         [
@@ -39,18 +39,18 @@
             }
         ]
     },
-    "Shares":
+    "shares":
     {
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Securities", "Shares"],
+                "Patterns": ["Securities", "Shares", "Equity"],
                 "Method": "Contain",
                 "Priority": 1
             }
         ]
     },
-    "UnrealizedValue":
+    "unrealized_value":
     {
         "ColumnNamePattern":
         [
@@ -62,7 +62,7 @@
             }
         ]
     },
-    "RealizedValue":
+    "realized_value":
     {
         "ColumnNamePattern":
         [
@@ -74,7 +74,7 @@
             }
         ]
     },
-    "Total":
+    "total":
     {
         "ColumnNamePattern":
         [
