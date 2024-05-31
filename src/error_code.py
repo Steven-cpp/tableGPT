@@ -72,6 +72,10 @@ class InvalidMethodError(ErrorCode):
     def __init__(self):
         super().__init__("ERR-ID1004", "Error", "Invalid method in rule, config is invalid")
 
+class UnsupportedReportSchemaError(ErrorCode):
+    def __init__(self):
+        super().__init__("ERR-ID1005", "Error", "The extractor does not support this csv file that should be identified")
+
 class NullTableAfterTransformationWarning(ErrorCode):
     def __init__(self):
         super().__init__("WRN-TR2001", "Warning", "Table is null after transformation")
