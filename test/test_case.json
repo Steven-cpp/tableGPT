@@ -1,0 +1,64 @@
+{
+    "Battery Ventures XIV - Q3 2023 - FS_4.csv": {
+        "total_cost": {
+            "source": "Invested",
+            "sum": 589603279,
+            "rule": "P1"
+        },
+        "unrealized_value": {
+            "source": "Valuation",
+            "sum": 586083176,
+            "rule": "P1"
+        },
+        "total": {
+            "source": "Total",
+            "sum": 586083176,
+            "rule": "P1"
+        },
+        "ownership": {
+            "source": "Current Ownership",
+            "sum": 6.966,
+            "rule": "P1"
+        },
+        "gross_moic": {
+            "source": "Investment Multiple",
+            "sum": 21.1,
+            "rule": "P1"
+        }
+    },
+    "SEQUOIA CAPITAL INDIA V - Q2 2023 - FS_11.csv": {
+        "total_cost": {
+            "source": "Total Cost",
+            "sum": 796405693,
+            "rule": "P1"
+        },
+        "realized_value": {
+            "source": "Proceeds",
+            "sum": 178378862,
+            "rule": "P1"
+        },
+        "unrealized_value": {
+            "source": "Fair Value",
+            "sum": 503253280,
+            "rule": "P1"
+        }
+    },
+    "SEQUOIA CAPITAL INDIA V - Q2 2023 - FS_12.csv": {
+        "total_cost": {
+            "source": "Total Cost",
+            "sum": 230758744,
+            "rule": "P1"
+        },
+        "realized_value": {
+            "source": "Proceeds",
+            "sum": 267459223,
+            "rule": "P1"
+        },
+        "unrealized_value": {
+            "source": "Fair Value",
+            "sum": 0,
+            "rule": "P1"
+        }
+    }
+
+}
