@@ -63,34 +63,45 @@ def extract_table(pdf_path: str, target_dir: str, cont: ExecutionContext) -> Err
     
     
 # Unzip the package obtained via API and rename it
-def unzip(zip_path: str, csv_target_dir: str) -> list:
+def unzip(zip_path: str, csv_target_dir: str, cache=False) -> Tuple[list, int]:
     zipFn = zip_path.split('/')[-1]
-    if not zipFn.endswith('zip'):
-        raise UnzipError(f'Invalid zip path {zip_path}')
-    
-    # 1. Extract zip file to the current working dir
-    ext_dir = zip_path[:-4]
-    with zipfile.ZipFile(zip_path, 'r') as zipFile:
-        zipFile.extractall(ext_dir)
-    os.remove(zip_path)
-
-    # 2. Move Tables to target directory
-    if not os.path.exists(os.path.join(ext_dir, 'tables')):
-        raise NoTableExtractedWarning()
     dest_dir = os.path.join(csv_target_dir, f'{zipFn[:-4]}')
-    try:
-        os.mkdir(dest_dir)
-    except OSError as e:
-        raise UnzipError(f'{e}')
-    for tab in os.listdir(os.path.join(ext_dir, 'tables')):
-        fileId = int(re.search(r'\d+', tab).group())
-        shutil.copy(os.path.join(ext_dir, 'tables', tab), \
-                    os.path.join(dest_dir, f'{zipFn[:-4]}_{fileId}.csv'))
+
+    if not cache:
+        if not zipFn.endswith('zip'):
+            raise UnzipError(f'Invalid zip path {zip_path}')
+        
+        # 1. Extract zip file to the current working dir
+        ext_dir = zip_path[:-4]
+        with zipfile.ZipFile(zip_path, 'r') as zipFile:
+            zipFile.extractall(ext_dir)
+        os.remove(zip_path)
+
+        # 2. Move Tables to target directory
+        if not os.path.exists(os.path.join(ext_dir, 'tables')):
+            raise NoTableExtractedWarning()
+
+        if not os.path.exists(dest_dir):
+            try:
+                os.mkdir(dest_dir)
+            except OSError as e:
+                logging.error(f'Failed to create dir {dest_dir}: {e}')
+                raise UnzipError(f'{e}')
+            
+        for tab in os.listdir(os.path.join(ext_dir, 'tables')):
+            fileId = int(re.search(r'\d+', tab).group())
+            shutil.copy(os.path.join(ext_dir, 'tables', tab), \
+                        os.path.join(dest_dir, f'{zipFn[:-4]}_{fileId}.csv'))
+        
+        # 3. Save `structuredData`` as reference
+        shutil.copy(os.path.join(ext_dir, 'structuredData.json'),
+                os.path.join(dest_dir, 'structuredData.json'))
     
-    # 3. Read `structuredData.json` to generate record metadata
+    # 4. Read `structuredData.json` to generate record metadata
     records = []
-    with open(os.path.join(ext_dir, 'structuredData.json')) as f:
+    with open(os.path.join(dest_dir, 'structuredData.json')) as f:
         metadata = json.load(f)
+    page_count = metadata['extended_metadata']['page_count']
     elements = [element for element in metadata['elements'] if 'filePaths' in element]
     for idx, e in enumerate(elements):
         record = {
@@ -101,16 +112,14 @@ def unzip(zip_path: str, csv_target_dir: str) -> list:
         }
         records.append(record)
 
-    # 4. Save `structuredData`` as reference
-    shutil.copy(os.path.join(ext_dir, 'structuredData.json'),
-                os.path.join(dest_dir, 'structuredData.json'))
     
-    return records
+    return records, page_count
 
 
-def extract_pdf(pdf_path: str, csv_dir: str) -> Tuple[Optional[ErrorCode], Optional[str]]:
+def extract_pdf(pdf_path: str, csv_dir: str) -> Tuple[Optional[ErrorCode], Optional[list], Optional[int]]:
     """Extract tables from specified pdf file, then save each csv table
-    to the specified folder
+       to the specified folder. If the target csv/fn[:-4] folder already exists,
+       return the result set directly.
 
     Args:
         pdf_path (str): The pdf file to be processed
@@ -132,12 +141,17 @@ def extract_pdf(pdf_path: str, csv_dir: str) -> Tuple[Optional[ErrorCode], Optio
     # Create an ExecutionContext using credentials and create a new operation instance.
     execution_context = ExecutionContext.create(credentials)
 
+    report_csv_dir = csv_dir + '/' + pdf_path.split('/')[-1][:-4]
+
     try:
-        zip_path = extract_table(pdf_path, target_dir, execution_context)
-        csv_record = unzip(zip_path, csv_dir)
+        if os.path.exists(report_csv_dir):
+            csv_record, page_count = unzip(pdf_path, csv_dir, cache=True)
+        else:
+            zip_path = extract_table(pdf_path, target_dir, execution_context)
+            csv_record, page_count = unzip(zip_path, csv_dir)
     except ErrorCode as e:
-        return e, None
+        return e, None, None
     
-    return None, csv_record 
+    return None, csv_record, page_count
 
 
