@@ -2,7 +2,18 @@
 	"company_name":   
     {  
 		"ColumnIndex": 0
-	},  
+	},
+    "security_type":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Security Type"],
+                "Method": "Contain",
+                "Priority": 1
+            }
+        ]
+    },
     "total_cost":
     {
         "ColumnNamePattern":
@@ -67,7 +78,7 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Proceeds"],
+                "Patterns": ["Proceeds", "Realized Value"],
                 "Method": "Contain",
                 "LookAround": "Realized",
                 "Priority": 1
@@ -91,6 +102,38 @@
             },
             {
                 "Patterns": ["Total"],
+                "Method": "Contain",
+                "Priority": 2
+            }
+        ]
+    },
+    "gross_moic":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Gross MOIC", "Investment Multiple"],
+                "Method": "Contain",
+                "Priority": 1
+            },
+            {
+                "Patterns": ["MOIC", "Multiple"],
+                "Method": "Contain",
+                "Priority": 2
+            }
+        ]
+    },
+    "gross_irr":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Investment IRR", "Gross IRR"],
+                "Method": "Contain",
+                "Priority": 1
+            },
+            {
+                "Patterns": ["IRR"],
                 "Method": "Contain",
                 "Priority": 2
             }
