@@ -37,6 +37,7 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
 
     # 1. Convert percentage to floating number
     if 'ownership' in df.columns:
+        df = df[df['ownership'].str.contains('%', na=True)]
         df['ownership'] = df['ownership'].str.rstrip('% ').astype(float) / 100
 
     # 2. Other Numeric values conversion
