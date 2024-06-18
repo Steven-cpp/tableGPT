@@ -17,6 +17,8 @@ import logging
 import shutil
 from dotenv import load_dotenv
 from typing import Tuple, Optional
+
+# TODO Change `error_code` to 'builtin.error_code'
 from error_code import *
 
 root_base = '/lakehouse/default/Files/End-to-end Demo'
@@ -106,8 +108,8 @@ def unzip(zip_path: str, csv_target_dir: str, cache=False) -> Tuple[list, int]:
     for idx, e in enumerate(elements):
         record = {
             'csv_path': os.path.join(dest_dir, f'{zipFn[:-4]}_{idx}.csv'),
-            'col_num': e['attributes']['NumCol'],
-            'row_num': e['attributes']['NumRow'],
+            'col_num': e['attributes']['NumCol'] if 'NumCol' in e['attributes'] else None,
+            'row_num': e['attributes']['NumRow'] if 'NumRow' in e['attributes'] else None,
             'page': e['Page']
         }
         records.append(record)
@@ -130,6 +132,7 @@ def extract_pdf(pdf_path: str, csv_dir: str) -> Tuple[Optional[ErrorCode], Optio
         dict: Extracted csv record
     """
     load_dotenv('{root_base}/.env')
+
     # TODO Change `target_dir` to '/tmp'
     target_dir = './tmp'
 
