@@ -56,9 +56,13 @@ class InvalidTableWarning(ErrorCode):
     def __init__(self):
         super().__init__("WRN-ID2002", "Warning", "Less than 3 columns identified, table is invalid")
 
+class UnsupportedC2ReportTypeWarning(ErrorCode):
+    def __init__(self, message):
+        super().__init__("WRN-ID2003", "Warning", f"The schedule of investments table of type C2 is unsupported: {message}")
+
 class P1RuleMultiMatchError(ErrorCode):
-    def __init__(self):
-        super().__init__("ERR-ID1002", "Error", "P1 rule has multi-matches")
+    def __init__(self, msg):
+        super().__init__("ERR-ID1002", "Error", f"P1 rule {msg} has multi-matches")
 
 class P2RuleMultiMatchWarning(ErrorCode):
     def __init__(self):
