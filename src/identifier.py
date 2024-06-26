@@ -6,9 +6,6 @@ req_fields = ["Patterns", "Method", "Priority"]
 
     
 def check_p1(df: pd.DataFrame, config: dict, metric: str) -> pd.Series | None:
-    if len(df.columns) < 4:
-        return None
-
     rules = config[metric]
     if 'ColumnIndex' in rules:
         return df.iloc[:, rules['ColumnIndex']]
