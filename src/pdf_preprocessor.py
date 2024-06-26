@@ -19,8 +19,15 @@ Output
 import pymupdf
 import os
 
-sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedules']
-pst_keywords = ['portfolio summary']
+sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedule']
+pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently in the portfolio']
+
+def update_map(map_obj, **args):
+    for key, value in args.items():
+        if key in map_obj:
+            map_obj[key].append(value)
+        else:
+            raise ValueError(f'Key {key} does not exist in the given dict')
 
 def process_docs(report_paths: list, output_dir='./output'):
     doc_map = {
@@ -40,24 +47,18 @@ def process_docs(report_paths: list, output_dir='./output'):
             table_type = process_page(page, new_doc)
             if table_type == '':
                 continue
-            doc_map['report_path'].append(path)
-            doc_map['report_name'].append(path.split('/')[-1])
-            doc_map['page_ori'].append(id + 1)
-            doc_map['page_new'].append(cnt_page + 1)
-            doc_map['table_type'].append(table_type)
-            doc_map['is_processed'].append(True)
+            update_map(doc_map, report_path=path, report_name=path.split('/')[-1],
+                       page_ori=id+1, page_new=cnt_page+1, table_type=table_type,
+                       is_processed=True)
             cnt_page += 1
         # If no SIT or PST tables are identified, also add this report as a reference
         if cnt_page_lst == cnt_page:
-            doc_map['report_path'].append(path)
-            doc_map['report_name'].append(path.split('/')[-1])
-            doc_map['page_ori'].append(None)
-            doc_map['page_new'].append(None)
-            doc_map['table_type'].append(None)
-            doc_map['is_processed'].append(False)
+            update_map(doc_map, report_path=path, report_name=path.split('/')[-1],
+                       page_ori=None, page_new=None, table_type=None, is_processed=False)
 
-    new_doc.save(os.path.join(output_dir, 'portco_tables_nowm.pdf'))
-    return doc_map
+    output_path = os.path.join(output_dir, 'portco_tables_nowm.pdf')
+    new_doc.save(output_path)
+    return output_path, doc_map
 
 
 def process_page(page, new_doc):
@@ -83,9 +84,9 @@ def process_page(page, new_doc):
             for line in block["lines"]:
                 for span in line["spans"]:
                     # Check for watermark properties
-                    if "confidential" not in span["text"].lower() and "finance-pe" not in span["text"].lower():  # Customize this condition
+                    if "confidential" not in span["text"].lower() and "finance-pe" not in span["text"].lower() and span["size"] < 20:  # Customize this condition
                         # Add the span text to the new page
-                        new_page.insert_text((span["bbox"][0], span["bbox"][1]), span["text"],
+                        new_page.insert_text((span["bbox"][0], span["bbox"][1]), span["text"].replace('$', ''),
                                              fontsize=span["size"], color=(0, 0, 0))
     
     return table_type
