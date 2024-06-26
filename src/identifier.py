@@ -81,6 +81,10 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
         case _:
             raise ValueError(f"Invalid method: {rule['Method']}")
 
+    if 'KeepLast' in rule:
+        if len(filtered_cols) > 1:
+            filtered_cols = list(filtered_cols[-1])
+
     # Look around neighbors
     if 'LookAround' in rule:
         key = rule['LookAround'].lower()

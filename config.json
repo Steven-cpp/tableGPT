@@ -19,15 +19,16 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Total Cost", "Total Invested", "Total Basis"],
+                "Patterns": ["Total Cost", "Total Invested", "Total Basis", "Total Investment"],
                 "LookAround": "Total",
                 "Method": "Contain",
                 "Priority": 1
             },
             {
                 "Patterns": ["Cost", "Invested", "Basis"],
-                "Method": "Contain",
-                "Priority": 2
+                "Method": "Match",
+                "Priority": 2,
+                "KeepLast": true
             }
         ]
     },
