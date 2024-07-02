@@ -44,6 +44,26 @@ class UnzipError(ErrorCode):
     def __init__(self, message):
         super().__init__("ERR-EX1005", "Error", f"Failed to unzip the file from PDF Extract API: {message}")
 
+class CreateAzureServiceError(ErrorCode):
+    def __init__(self, message):
+        super().__init__("ERR-EX1006", "Error", f"Failed to create ADI service: {message}")
+
+class ReportNotFoundError(ErrorCode):
+    def __init__(self, path):
+        super().__init__("ERR-EX1007", "Error", f"Failed to find the specified report: {path}")
+
+class AnalyzeDocumentError(ErrorCode):
+    def __init__(self, message):
+        super().__init__("ERR-EX1008", "Error", f"Failed to analyze the document: {message}")
+
+class NoTablePageDetectedWarning(ErrorCode):
+    def __init__(self, path):
+        super().__init__("WRN-EX1009", "Warning", f"Cannot find page containing SIT or PST from the given report: {path}")
+
+class UnsupportedMergedCellError(ErrorCode):
+    def __init__(self, cotent):
+        super().__init__("ERR-EX1010", "Error", f"Cannot process merged cell spanning more than 2 rows: {cotent}")
+
 class InvalidCSVError(ErrorCode):
     def __init__(self):
         super().__init__("ERR-ID1001", "Error", "The csv file is invalid")
@@ -56,18 +76,17 @@ class InvalidTableWarning(ErrorCode):
     def __init__(self):
         super().__init__("WRN-ID2002", "Warning", "Less than 3 columns identified, table is invalid")
 
-class UnsupportedC2ReportTypeWarning(ErrorCode):
-    def __init__(self, message):
-        super().__init__("WRN-ID2003", "Warning", f"The schedule of investments table of type C2 is unsupported: {message}")
-
 class P1RuleMultiMatchError(ErrorCode):
     def __init__(self, msg):
         super().__init__("ERR-ID1002", "Error", f"P1 rule {msg} has multi-matches")
 
 class P2RuleMultiMatchWarning(ErrorCode):
-    def __init__(self):
-        super().__init__("WRN-ID2003", "Warning", "P2 rule has multi-matches")
+    def __init__(self, msg):
+        super().__init__("WRN-ID2003", "Warning", f"P2 rule {msg} has multi-matches")
 
+class UnsupportedC2ReportTypeWarning(ErrorCode):
+    def __init__(self, message):
+        super().__init__("WRN-ID2004", "Warning", f"The schedule of investments table of type C2 is unsupported: {message}")
 class InvalidConfigError(ErrorCode):
     def __init__(self):
         super().__init__("ERR-ID1003", "Error", "Missing required configs, ['Patterns', 'Method', 'Priority'] are required, config is invalid")
@@ -79,6 +98,10 @@ class InvalidMethodError(ErrorCode):
 class UnsupportedReportSchemaError(ErrorCode):
     def __init__(self):
         super().__init__("ERR-ID1005", "Error", "The extractor does not support this csv file that should be identified")
+
+class InvalidC1ReportSchemaError(ErrorCode):
+    def __init__(self):
+        super().__init__("ERR-ID1006", "Error", "The schedule of investments table of type C1 is invalid, does not align with the expected schema.")
 
 class NullTableAfterTransformationWarning(ErrorCode):
     def __init__(self):
