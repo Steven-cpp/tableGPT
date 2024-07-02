@@ -26,21 +26,28 @@ def extend_company_name(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: the final SIT with filled company name
     """
     row_id = 0
+    df['company_name'] = df['company_name'].fillna(value='')
+    df['security_type'] = df['security_type'].fillna(value='')
     while row_id < len(df):
         company_name = ''
         start = row_id
-        while df.iloc[row_id, :]['security_type']:
-            row = df.iloc[row_id, :]
-            company_name += row['company_name'] if row['company_name'] else ''
+        while df.loc[row_id, 'security_type'] != '':
+            company_name += df.loc[row_id, 'company_name']
             row_id += 1
             if row_id >= len(df):
                 break
+        company_name += ' ' + df.loc[row_id, 'company_name']
+        if start < row_id:
+            df.loc[row_id, 'company_name'] = ''
+
         regex_dba = re.compile(r'\(dba (.+?)\)')
         mat = regex_dba.search(company_name)
         if mat:
             company_name = mat.group(1)
+
+        df.loc[start:row_id-1, 'company_name'] = company_name.strip()
+
         row_id += 1
-        df.iloc[start: row_id, 'company_name'] = company_name.strip()
     return df
 
 def extract_hidden_security_type(df: pd.DataFrame) -> pd.DataFrame:
@@ -174,6 +181,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
             - summary: The extracted metric summary table.
     """
     try:
+        # All the missing values are treated as `np.nan`
         df = pd.read_csv(csv_path, index_col=False)
     except Exception as e:
         logging.warning(f'Failed to read {csv_path}: {e}')
@@ -201,9 +209,9 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
 
     res = pd.DataFrame()
     metric_dict = {
-        'Target': [],
-        'Src': [],
-        'Rule': [],
+        'target': [],
+        'src': [],
+        'rule': [],
     }
 
     for metric in rule_config:
@@ -213,20 +221,20 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
                 col = check_p2(df, rule_config, metric)
                 if col is None:
                     continue
-                metric_dict['Rule'].append('P2')
+                metric_dict['rule'].append('P2')
                 if len(col.columns) > 1:
                     raise P2RuleMultiMatchWarning(metric)
                 else:
                     col = col.iloc[:, 0]
             else:
-                metric_dict['Rule'].append('P1')
+                metric_dict['rule'].append('P1')
 
             # Remove the columns after matching
             df.drop(columns=[col.name], inplace=True)
 
             # Append items into summary table
-            metric_dict['Target'].append(metric)
-            metric_dict['Src'].append(col.name)
+            metric_dict['target'].append(metric)
+            metric_dict['src'].append(col.name)
             col.name = metric
             res = pd.concat([res, col], axis=1)
 
@@ -264,12 +272,12 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/08_Insight Venture Partners VII - Q3 2023 - QR - PST.pdf',
+        './docs/Lightspeed India Partners III Q2 2023 - Quarterly report-nowm.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/Lightspeed India Partners III Q2 2023 - Quarterly report-nowm/table_PST_20.csv'
+        './output/Lightspeed India Partners III Q2 2023 - Quarterly report-nowm/table_SIT_23.csv'
     ]
 
     processed_report_path, metadata = process_docs(report_paths)
