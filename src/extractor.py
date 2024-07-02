@@ -106,6 +106,8 @@ def unzip(zip_path: str, csv_target_dir: str, cache=False) -> Tuple[list, int]:
     page_count = metadata['extended_metadata']['page_count']
     elements = [element for element in metadata['elements'] if 'filePaths' in element]
     for idx, e in enumerate(elements):
+        if 'Page' not in e:
+            continue
         record = {
             'csv_path': os.path.join(dest_dir, f'{zipFn[:-4]}_{idx}.csv'),
             'col_num': e['attributes']['NumCol'] if 'NumCol' in e['attributes'] else None,
