@@ -17,10 +17,12 @@ Output
     doc_map (dict): the origianl pdf metadata
 """
 import pymupdf
+import hashlib
 import os
 
 sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedule']
-pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently in the portfolio']
+pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently in the portfolio', 'investments as of',
+                'investment multiple and gross irr']
 
 def update_map(map_obj, **args):
     for key, value in args.items():
@@ -55,8 +57,9 @@ def process_docs(report_paths: list, output_dir='./output'):
         if cnt_page_lst == cnt_page:
             update_map(doc_map, report_path=path, report_name=path.split('/')[-1],
                        page_ori=None, page_new=None, table_type=None, is_processed=False)
-
-    output_path = os.path.join(output_dir, 'portco_tables_nowm.pdf')
+    
+    uuid = hashlib.sha256(','.join(report_paths).encode('utf-8')).hexdigest()[:8]
+    output_path = os.path.join(output_dir, f'reports_nowm_{uuid}.pdf')
     new_doc.save(output_path)
     return output_path, doc_map
 
@@ -84,7 +87,7 @@ def process_page(page, new_doc):
             for line in block["lines"]:
                 for span in line["spans"]:
                     # Check for watermark properties
-                    if "confidential" not in span["text"].lower() and "finance-pe" not in span["text"].lower() and span["size"] < 20:  # Customize this condition
+                    if "confidential" not in span["text"].lower() and "@sofinagroup" not in span["text"].lower() and span["size"] < 20:  # Customize this condition
                         # Add the span text to the new page
                         new_page.insert_text((span["bbox"][0], span["bbox"][1]), span["text"].replace('$', ''),
                                              fontsize=span["size"], color=(0, 0, 0))
