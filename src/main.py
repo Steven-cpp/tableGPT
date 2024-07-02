@@ -1,15 +1,47 @@
 import logging
 import json
-import os
+import re
 import pandas as pd
 import numpy as np
+from dotenv import load_dotenv 
 from typing import Tuple, Optional
-from extractor import extract_pdf
+from pdf_preprocessor import process_docs
+from extractor_azure import analyze_layout
 from identifier import check_p1, check_p2
 from error_code import *
 
+INVESTMENT_DATE = 'investment_date'
 SECURITY_TYPE_COL = 'security_type'
 COMPANY_NAME_COL = 'company_name'
+PDF_EXTRACTION_API = 'Azure'
+
+
+def extend_company_name(df: pd.DataFrame) -> pd.DataFrame:
+    """Fill empty company name if security type already exists
+
+    Args:
+        df (pd.DataFrame): the potential SIT of type C1
+
+    Returns:
+        pd.DataFrame: the final SIT with filled company name
+    """
+    row_id = 0
+    while row_id < len(df):
+        company_name = ''
+        start = row_id
+        while df.iloc[row_id, :]['security_type']:
+            row = df.iloc[row_id, :]
+            company_name += row['company_name'] if row['company_name'] else ''
+            row_id += 1
+            if row_id >= len(df):
+                break
+        regex_dba = re.compile(r'\(dba (.+?)\)')
+        mat = regex_dba.search(company_name)
+        if mat:
+            company_name = mat.group(1)
+        row_id += 1
+        df.iloc[start: row_id, 'company_name'] = company_name.strip()
+    return df
 
 def extract_hidden_security_type(df: pd.DataFrame) -> pd.DataFrame:
     """Extracy hidden security type from typical C2 schedule of investment table(SIT).
@@ -30,14 +62,14 @@ def extract_hidden_security_type(df: pd.DataFrame) -> pd.DataFrame:
         if row.notnull().sum() == 1:
             # If the first column is null, then there is an error
             if not row.notnull().iloc[0]:
-                raise UnsupportedC2ReportTypeWarning("The first column of potential parent row is null.")
+                continue
             parent = row.iloc[0]
         else:
             if parent == '':
                 raise UnsupportedC2ReportTypeWarning("No parent detected for the security type.")
-            if 'total' in row_dict[COMPANY_NAME_COL].lower():
-                continue
             row_dict = row.to_dict()
+            if row[[COMPANY_NAME_COL]].isna().iloc[0] or 'total' in row_dict[COMPANY_NAME_COL].lower():
+                continue
             row_dict[SECURITY_TYPE_COL] = row_dict[COMPANY_NAME_COL]
             row_dict[COMPANY_NAME_COL] = parent
             res_dicts.append(row_dict)
@@ -47,19 +79,24 @@ def extract_hidden_security_type(df: pd.DataFrame) -> pd.DataFrame:
 
 # Clean the extracted table to be consumed
 def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
-    pat_series = 'Series [A-Z](-\d+)?|Class [A-Z]|Common Stock|Preferred Stock'
+    pat_series = 'Series [A-Z](?:-\d+)?|Class [A-Z]|Common Stock|Preferred Stock'
     is_layered = df.apply(lambda x: x.str.contains(pat_series, regex=True).any()\
                           if x.dtype == 'O' else False, axis=0).any()
-    if is_layered and SECURITY_TYPE_COL not in df.columns:
-        # 0. Extract hidden security type as a separate column first
-        df = extract_hidden_security_type(df)
+    if is_layered:
+        if SECURITY_TYPE_COL not in df.columns:
+            # 0. Extract hidden security type as a separate column first
+            df = extract_hidden_security_type(df)
+        else:
+            # 0. Fill empty company name
+            df = extend_company_name(df)
 
-    numeric_cols = df.columns.drop([COMPANY_NAME_COL, SECURITY_TYPE_COL], errors="ignore")
+    numeric_cols = df.columns.drop([COMPANY_NAME_COL, SECURITY_TYPE_COL, INVESTMENT_DATE], errors="ignore")
 
     # 1. Convert percentage to floating number
     if 'ownership' in df.columns:
         df = df[df['ownership'].str.contains('%', na=True)]
-        df['ownership'] = df['ownership'].str.rstrip('% ').astype(float) / 100
+        df['ownership'] = df['ownership'].str.replace(r'[\[\]]', '', regex=True)\
+                          .str.rstrip('% ').astype(float) / 100
 
     # 2. Other Numeric values conversion
     for col in numeric_cols:
@@ -88,35 +125,8 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-def plot_summary(df: pd.DataFrame, gp: str, n: int) -> None:
-    df['Accuracy'] = df['Sum'] / df['SumGT']
-    cvg = sum(df['Src'].str.strip() == df['SrcGT'])
-    logging.info('Extraction Summary Table of %s:\n %s', gp, df)
-    print('=' * 23 + f' Extraction Summary Table of {gp} ' + '=' * 23)
-    print(df)
-    print('=' * 23 + f' Overall Coverage = {cvg / n}, END ' + '=' * 23)
-
-
-def update_GT(test_case_path: str) -> Optional[ErrorCode]:
-    """ Update GT in `source.matched_metric` given predefined test case
-    If there already exists the record with the same `(report_path, csv_path, target)`, 
-    we just need to update the GT column. Otherwise, we need to insert a new record.
-
-    Args:
-        test_case_path (str): path of predefined test case
-
-    Returns:
-        ErrorCode: if None, then no error occurred; else error occurred in the process
-            
-    """
-    # 1. Read from `test_case_path`, get (report_path, csv_path, source_gt, sum_gt, target)
-    # 2. Do the database update
-    pass
-
 
 def extract_port(rule_path: str, csv_path: str) -> Tuple[Optional[ErrorCode], Optional[pd.DataFrame], Optional[pd.DataFrame]]:
-    
-
     """ Identify and extract portfolio summary table from the given csv file
 
     Args:
@@ -141,7 +151,7 @@ def extract_port(rule_path: str, csv_path: str) -> Tuple[Optional[ErrorCode], Op
         return InvalidTableWarning(), None, None
 
     # Show the extracted portfolio table
-    logging.info('Final Table of %s: \n %s', report_name, port)
+    logging.info('Final Table of %s: \n %s', csv_path, port)
     return None, port, metric
 
 
@@ -164,7 +174,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
             - summary: The extracted metric summary table.
     """
     try:
-        df = pd.read_csv(csv_path)
+        df = pd.read_csv(csv_path, index_col=False)
     except Exception as e:
         logging.warning(f'Failed to read {csv_path}: {e}')
         raise InvalidCSVError()
@@ -172,11 +182,14 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     if len(df) < 4:
         raise InvalidTableWarning()
     
+    # Azure will create an index column for all the csvs
+    if PDF_EXTRACTION_API == 'Azure':
+        df = df.drop(columns=df.columns[0])
+
     # If the real column is in second row, set the second row as the new header
     unnamed_mask = df.columns.str.contains('Unnamed:')
-    if sum(unnamed_mask) > df.shape[1] // 2:
+    if sum(unnamed_mask) >= df.shape[1] // 2:
         # Set the second row as the new header
-        df = df.reset_index()
         df.columns = df.iloc[0]
         # Drop the first two rows (misplaced header and actual header row)
         df = df.drop([0]).reset_index(drop=True)
@@ -191,7 +204,6 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
         'Target': [],
         'Src': [],
         'Rule': [],
-        'Sum': [],
     }
 
     for metric in rule_config:
@@ -203,7 +215,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
                     continue
                 metric_dict['Rule'].append('P2')
                 if len(col.columns) > 1:
-                    raise P2RuleMultiMatchWarning()
+                    raise P2RuleMultiMatchWarning(metric)
                 else:
                     col = col.iloc[:, 0]
             else:
@@ -225,12 +237,12 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     if res.empty:
         return pd.DataFrame(), pd.DataFrame()
 
+    if len(res.columns) < 3:
+        raise InvalidTableWarning()
+
     port = preprocess_identified(res)
     if port.empty:
         return pd.DataFrame(), pd.DataFrame()
-    
-    sumArr = [np.nan] + list(port.sum(numeric_only=True))
-    metric_dict['Sum'] = sumArr
 
     return port, pd.DataFrame(metric_dict)
   
@@ -241,28 +253,44 @@ if __name__ == "__main__":
                         format='%(asctime)s - %(levelname)s - %(message)s')
     
     rule_path = 'config.json'
-    report_name = 'ICONIQ STRATEGIC PARTNERS VI-B - Q3 2023 - FS'
+    report_name = 'Lightspeed India Partners III Q2 2023 - Quarterly report-nowm'
     report_path = './docs/' + report_name + '.pdf'
     csv_dir = './output'
 
     report_csv_dir = csv_dir + '/' + report_name
-    
+
+    load_dotenv('.env')
+
     logging.info('1. Extracting Tables from PDF File')
-    error, records, page_count = extract_pdf(report_path, csv_dir)
-    if error is None:
-        records = pd.DataFrame(records)
-        print(records)
-    else:
-        print(error)
+
+    report_paths = [
+        './docs/08_Insight Venture Partners VII - Q3 2023 - QR - PST.pdf',
+        # './docs/TA XIV-B Q3 2023 Report.pdf'
+    ]
+
+    test_csv_paths = [
+        './output/Lightspeed India Partners III Q2 2023 - Quarterly report-nowm/table_PST_20.csv'
+    ]
+
+    processed_report_path, metadata = process_docs(report_paths)
+    metadata = pd.DataFrame(metadata)
+    err, csv_records = analyze_layout(processed_report_path, metadata)
+    if err:
+        raise RuntimeError()
+    csv_records = pd.DataFrame(csv_records)
+    logging.info('Done: Tables are extracted from PDF files')
+    logging.info(csv_records)
 
     # logging.info('2. Identifying Portfolio Summary Table')
 
     # logging.info('3. Processing the Extracted Table')
 
-    for csv_path in records['csv_path']:
+    for csv_path in csv_records['csv_path']:
+    # for csv_path in test_csv_paths:
+        csv_fn = csv_path.split('\\')[-1]
         error, port, metric_summary = extract_port(rule_path, csv_path)
         if error is None:
+            print(csv_fn)
             print(metric_summary)
         else:
-            csv_fn = csv_path.split('\\')[-1]
             print(f"{csv_fn}: {error}")
