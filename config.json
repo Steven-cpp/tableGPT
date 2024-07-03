@@ -14,6 +14,17 @@
             }
         ]
     },
+    "investment_date":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Date"],
+                "Method": "Contain",
+                "Priority": 1
+            }
+        ]
+    },
     "total_cost":
     {
         "ColumnNamePattern":
@@ -67,10 +78,11 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Fair Value", "FV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value"],
+                "Patterns": ["Fair Value", "FV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value"],
                 "Method": "Contain",
                 "LookAround": "Unrealized",
-                "Priority": 1
+                "Priority": 1,
+                "KeepLast": true
             }
         ]
     },
