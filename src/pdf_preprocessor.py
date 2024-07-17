@@ -31,7 +31,7 @@ def update_map(map_obj, **args):
         else:
             raise ValueError(f'Key {key} does not exist in the given dict')
 
-def process_docs(report_paths: list, output_dir='./output'):
+def process_docs(report_paths: list, output_dir='./output', fn='report_nowm'):
     doc_map = {
         'report_path': [],
         'report_name': [],
@@ -58,8 +58,8 @@ def process_docs(report_paths: list, output_dir='./output'):
             update_map(doc_map, report_path=path, report_name=path.split('/')[-1],
                        page_ori=None, page_new=None, table_type=None, is_processed=False)
     
-    uuid = hashlib.sha256(','.join(report_paths).encode('utf-8')).hexdigest()[:8]
-    output_path = os.path.join(output_dir, f'reports_nowm_{uuid}.pdf')
+    uuid = hashlib.sha256(','.join(report_paths).encode('utf-8')).hexdigest()[:4]
+    output_path = os.path.join(output_dir, f'{fn}_{uuid}.pdf')
     new_doc.save(output_path)
     return output_path, doc_map
 
