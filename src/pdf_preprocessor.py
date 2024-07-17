@@ -18,6 +18,7 @@ Output
 """
 import pymupdf
 import hashlib
+import logging
 import os
 
 sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedule']
@@ -43,7 +44,11 @@ def process_docs(report_paths: list, output_dir='./output', fn='report_nowm'):
     cnt_page = 0
     new_doc = pymupdf.open()
     for path in report_paths:
-        doc = pymupdf.open(path)
+        try:
+            doc = pymupdf.open(path)
+        except Exception as e:
+            logging.warning(f'Failed to read the report: {e}.')
+            continue
         cnt_page_lst = cnt_page
         for id, page in enumerate(doc):
             table_type = process_page(page, new_doc)
