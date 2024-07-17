@@ -84,6 +84,9 @@ def process_page(page, new_doc):
         return ''
 
     new_page = new_doc.new_page(width=page.rect.width, height=page.rect.height)
+    is_rotated_90 = (page.rotation == 90)
+    if is_rotated_90:
+        print('is_rotated')
     # Get all text blocks on the page
     text_blocks = page.get_text("dict")["blocks"]
     
@@ -93,9 +96,13 @@ def process_page(page, new_doc):
             for line in block["lines"]:
                 for span in line["spans"]:
                     # Check for watermark properties
-                    if "confidential" not in span["text"].lower() and "@sofinagroup" not in span["text"].lower() and span["size"] < 20:  # Customize this condition
+                    if "confidential" not in span["text"].lower() and "@sofinagroup" not in span["text"].lower() and span["size"] < 20:
                         # Add the span text to the new page
-                        new_page.insert_text((span["bbox"][0], span["bbox"][1]), span["text"].replace('$', ''),
-                                             fontsize=span["size"], color=(0, 0, 0))
+                        rec = pymupdf.Rect(span["bbox"][0], span["bbox"][1], span["bbox"][2], span["bbox"][3])
+                        rec = rec * page.rotation_matrix
+                        if is_rotated_90:
+                            rec[0] = min(rec[0], rec[2])
+                        new_page.insert_text((rec[0], rec[1]), span["text"].replace('$', ''),
+                                             fontsize=span["size"]-0.5, color=(0, 0, 0))
     
     return table_type
