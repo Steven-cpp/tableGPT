@@ -62,7 +62,8 @@ def process_docs(report_paths: list, output_dir='./output', fn='report_nowm'):
         if cnt_page_lst == cnt_page:
             update_map(doc_map, report_path=path, report_name=path.split('/')[-1],
                        page_ori=None, page_new=None, table_type=None, is_processed=False)
-    
+    if cnt_page == 0:
+        return None, None
     uuid = hashlib.sha256(','.join(report_paths).encode('utf-8')).hexdigest()[:4]
     output_path = os.path.join(output_dir, f'{fn}_{uuid}.pdf')
     new_doc.save(output_path)
