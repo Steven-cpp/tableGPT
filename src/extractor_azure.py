@@ -10,7 +10,7 @@ from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
 
 
 
-def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str):
+def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, report_path:str):
     metadata_csv = {
         'report_path': [],
         'report_name': [],
@@ -47,13 +47,14 @@ def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str):
         df = df[df.any(axis=1)]        
         # Write to excel only if dataframe has some data
         if not(df.empty):
-            metadata = doc_map[doc_map['page_new'] == current_page_num]
-            report_path = metadata['report_path'].iloc[0]
+            metadata = doc_map[doc_map['report_path'] == report_path]
             report_name = metadata['report_name'].iloc[0]
             table_type = metadata['table_type'].iloc[0]
             page_ori = int(metadata['page_ori'].iloc[0])
-            dir_path = os.path.join(output_dir, report_name.replace('.pdf', ''))
-            csv_path = os.path.join(dir_path, f'table_{table_type}_{page_ori}.csv')
+            page_new = int(metadata['page_new'].iloc[0])
+            fund_name = os.path.dirname(report_path)
+            dir_path = os.path.join(output_dir, fund_name)
+            csv_path = os.path.join(dir_path, f'{page_new:02d}_{report_name}_{table_type}_{page_ori}.csv')
             update_map(metadata_csv,
                        report_path=report_path,
                        report_name=report_name,
@@ -86,5 +87,5 @@ def analyze_layout(report_path:str, doc_map:pd.DataFrame, output_dir='./output')
 
     result: AnalyzeResult = poller.result()
 
-    metadata = to_pandas(result, doc_map, output_dir)
+    metadata = to_pandas(result, doc_map, output_dir, report_path)
     return None, metadata
