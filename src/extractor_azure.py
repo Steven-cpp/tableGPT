@@ -54,7 +54,7 @@ def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, proc_
             table_type = metadata['table_type'].iloc[0]
             page_ori = int(metadata['page_ori'].iloc[0])
             page_new = int(metadata['page_new'].iloc[0])
-            fund_name = os.path.dirname(report_path)
+            fund_name = report_path.split('/')[-2]
             dir_path = os.path.join(output_dir, fund_name)
             csv_path = os.path.join(dir_path, f'{page_new:02d}_{report_name}_{table_type}_{page_ori}.csv')
             update_map(metadata_csv,
