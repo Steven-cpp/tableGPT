@@ -10,7 +10,7 @@ from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
 
 
 
-def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, report_path:str):
+def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, proc_report_path:str):
     metadata_csv = {
         'report_path': [],
         'report_name': [],
@@ -47,7 +47,9 @@ def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, repor
         df = df[df.any(axis=1)]        
         # Write to excel only if dataframe has some data
         if not(df.empty):
-            metadata = doc_map[doc_map['report_path'] == report_path]
+            mask = (doc_map['processed_report_path'] == proc_report_path) & (doc_map['page_new'] == current_page_num)
+            metadata = doc_map[mask]
+            report_path = metadata['report_path'].iloc[0]
             report_name = metadata['report_name'].iloc[0]
             table_type = metadata['table_type'].iloc[0]
             page_ori = int(metadata['page_ori'].iloc[0])
