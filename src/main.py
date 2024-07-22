@@ -84,6 +84,40 @@ def extract_hidden_security_type(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(data=res_dicts)
 
 
+def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
+    """Identify total line in the table, and set `isTotal` column
+
+    Args:
+        df (pd.DataFrame): Preprocessed extracted table
+
+    Returns:
+        pd.DataFrame: the original df with a new `isTotal` column
+    """
+    rule_contain = ['Total Investment', 'Total Portfolio Investment']
+    rule_equal = ['Total', '']
+    # Check last two rows only
+    rule_lastNRows = 2
+
+    def is_total(header) -> bool:
+        if not isinstance(header, str):
+            return False
+        header = header.lower().strip()
+        is_contain = any(s.lower() in header for s in rule_contain)
+        is_equal = any(s.lower() == header for s in rule_equal)
+        return is_contain or is_equal
+
+    df['isTotal'] = False
+    for i in range(rule_lastNRows):
+        idx = - (i + 1)
+        if idx < -len(df):
+             break
+        if is_total(df.iloc[idx]['CompanyName']):
+            df.at[df.index[idx], 'isTotal'] = True
+            break
+
+    return df
+
+
 # Clean the extracted table to be consumed
 def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     pat_series = 'Series [A-Z](?:-\d+)?|Class [A-Z]|Common Stock|Preferred Stock'
@@ -98,7 +132,7 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
             df = extend_company_name(df)
 
     numeric_cols = df.columns.drop([COMPANY_NAME_COL, SECURITY_TYPE_COL, INVESTMENT_DATE], errors="ignore")
-
+    
     # 1. Convert percentage to floating number
     if 'ownership' in df.columns:
         df = df[df['ownership'].str.contains('%', na=True)]
@@ -117,11 +151,14 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     if len(df) == 0 or df['company_name'].dtype != 'O':
         return pd.DataFrame()
 
-    # 4. Remove rows of empty company name or contain ['Total', 'Investment']
+    # 4. Identify total line at the bottom
+    df = __preprocess_total(df)
+
+    # 5. Remove rows of empty company name or contain ['Total', 'Investment']
     df = df[~(df[df.columns[0]].str.contains('Total|Realized', case=False, na=False)\
             | (df.iloc[:, 0].isna()))]
     
-    # 5. Value self-validation
+    # 6. Value self-validation
     cross_check_cols = ['unrealize_value', 'realized_value', 'total']
     if sum(df.columns.isin(cross_check_cols)) == len(cross_check_cols):
         df['total_exp'] = df['unrealize_value'] + df['realized_value']
@@ -272,7 +309,7 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Lightspeed India Partners III Q2 2023 - Quarterly report-nowm.pdf',
+        './docs/Battery Ventures XI - Q1 2024 - QR.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
