@@ -94,7 +94,7 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: the original df with a new `isTotal` column
     """
     rule_contain = ['Total Investment', 'Total Portfolio Investment']
-    rule_equal = ['Total', '']
+    rule_equal = ['Total', '', 'Totals']
     # Check last two rows only
     rule_lastNRows = 2
 
