@@ -106,13 +106,13 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
         is_equal = any(s.lower() == header for s in rule_equal)
         return is_contain or is_equal
 
-    df['isTotal'] = False
+    df['is_total'] = False
     for i in range(rule_lastNRows):
         idx = - (i + 1)
         if idx < -len(df):
              break
-        if is_total(df.iloc[idx]['CompanyName']):
-            df.at[df.index[idx], 'isTotal'] = True
+        if is_total(df.iloc[idx][COMPANY_NAME_COL]):
+            df.at[df.index[idx], 'is_total'] = True
             break
 
     return df
@@ -121,7 +121,7 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
 # Clean the extracted table to be consumed
 def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     pat_series = 'Series [A-Z](?:-\d+)?|Class [A-Z]|Common Stock|Preferred Stock'
-    is_layered = df.apply(lambda x: x.str.contains(pat_series, regex=True).any()\
+    is_layered = df.apply(lambda x: x.str.contains(pat_series, regex=True, case=False).any()\
                           if x.dtype == 'O' else False, axis=0).any()
     if is_layered:
         if SECURITY_TYPE_COL not in df.columns:
