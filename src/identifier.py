@@ -44,7 +44,11 @@ def check_rule(df: pd.DataFrame, pat: dict, type: str, p:int) -> pd.DataFrame | 
     if type.lower() not in ['name', 'value']:
         raise ValueError('Invalid Parameter Type: type should be either `name` or `value`')
     for rule in pat:
-        options = __check_rule_name(df, rule, p=p) if type == 'name' else __check_rule_value(df, rule)
+        try:
+            options = __check_rule_name(df, rule, p=p) if type == 'name' else __check_rule_value(df, rule)
+        except Exception as e:
+            logging.error('Check rule name failed, columns: ', df.columns, 'rule: ', rule)
+            options = None
         if options is None:
             continue
         return options
@@ -83,7 +87,7 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
 
     if 'KeepLast' in rule:
         if len(filtered_cols) > 1:
-            filtered_cols = list(filtered_cols[-1])
+            filtered_cols = [filtered_cols[-1]]
 
     # Look around neighbors
     if 'LookAround' in rule:
@@ -107,6 +111,9 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
         filtered_col_idxs = [df.columns.get_loc(col) for col in filtered_cols]
         res = []
         for i, col_id in enumerate(filtered_col_idxs):
+            if not isinstance(col_id, int):
+                logging.warning(f'Multi-match column name: {filtered_cols[i]} in columns: {df.columns}')
+                continue
             if col_id == 0 or col_id == len(df.columns) - 1:
                 logging.warning(f'The LookAround is taken at the side of the table: \
                         col_id = {col_id}, col_name = {filtered_cols[i]}')
