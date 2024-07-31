@@ -40,11 +40,6 @@ def extend_company_name(df: pd.DataFrame) -> pd.DataFrame:
         if start < row_id:
             df.loc[row_id, 'company_name'] = ''
 
-        regex_dba = re.compile(r'\(dba (.+?)\)')
-        mat = regex_dba.search(company_name)
-        if mat:
-            company_name = mat.group(1)
-
         df.loc[start:row_id-1, 'company_name'] = company_name.strip()
 
         row_id += 1
@@ -75,7 +70,10 @@ def extract_hidden_security_type(df: pd.DataFrame) -> pd.DataFrame:
             if parent == '':
                 raise UnsupportedC2ReportTypeWarning("No parent detected for the security type.")
             row_dict = row.to_dict()
-            if row[[COMPANY_NAME_COL]].isna().iloc[0] or 'total' in row_dict[COMPANY_NAME_COL].lower():
+            if row[[COMPANY_NAME_COL]].isna().iloc[0]:
+                continue
+            if 'total' in row_dict[COMPANY_NAME_COL].lower():
+                res_dicts.append(row_dict)
                 continue
             row_dict[SECURITY_TYPE_COL] = row_dict[COMPANY_NAME_COL]
             row_dict[COMPANY_NAME_COL] = parent
@@ -93,7 +91,7 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: the original df with a new `isTotal` column
     """
-    rule_contain = ['Total Investment', 'Total Portfolio Investment']
+    rule_contain = ['Total Investments', 'Total Portfolio Investments']
     rule_equal = ['Total', '', 'Totals']
     # Check last two rows only
     rule_lastNRows = 2
