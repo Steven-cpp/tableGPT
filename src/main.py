@@ -229,12 +229,13 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     if PDF_EXTRACTION_API == 'Azure':
         df = df.drop(columns=df.columns[0])
 
-    # If the real column is in second row, set the second row as the new header
-    unnamed_mask = df.columns.str.contains('Unnamed:')
-    if sum(unnamed_mask) >= df.shape[1] // 2:
-        # Set the second row as the new header
-        df.columns = df.iloc[0]
-        # Drop the first two rows (misplaced header and actual header row)
+    # If the column row is mis-identified, then the label 
+    unnamed_mask_1r = df.columns.str.contains('Unnamed:')
+    unnamed_mask_2r = df.iloc[0, :].isna().to_numpy()
+    not_misplaced = sum((unnamed_mask_1r.astype(int) + unnamed_mask_2r.astype(int)) == 0)
+
+    if not not_misplaced:
+        df.columns = [df.iloc[0, i] if type(df.iloc[0, i]) is str else df.columns[i] for i in range(len(df.columns))]
         df = df.drop([0]).reset_index(drop=True)
     
     df.columns = df.columns.str.replace('*', '', regex=False)
@@ -296,7 +297,7 @@ if __name__ == "__main__":
                         format='%(asctime)s - %(levelname)s - %(message)s')
     
     rule_path = 'config.json'
-    report_name = 'Lightspeed India Partners III Q2 2023 - Quarterly report-nowm'
+    report_name = 'Sequoia Capital U.S. Venture 2010 - 06.2023'
     report_path = './docs/' + report_name + '.pdf'
     csv_dir = './output'
 
@@ -307,16 +308,17 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Battery Ventures XI - Q1 2024 - QR.pdf',
+        './docs/Sequoia Capital U.S. Venture 2010 - 06.2023.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
-    test_csv_paths = [
-        './output/Lightspeed India Partners III Q2 2023 - Quarterly report-nowm/table_SIT_23.csv'
-    ]
+    # test_csv_paths = [
+    #     './output/Lightspeed India Partners III Q2 2023 - Quarterly report-nowm/table_SIT_23.csv'
+    # ]
 
     processed_report_path, metadata = process_docs(report_paths)
     metadata = pd.DataFrame(metadata)
+    metadata['processed_report_path'] = processed_report_path
     err, csv_records = analyze_layout(processed_report_path, metadata)
     if err:
         raise RuntimeError()
