@@ -23,7 +23,7 @@ import os
 
 sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedule']
 pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently in the portfolio', 'investments as of',
-                'investment multiple and gross irr']
+                'investment multiple and gross irr', 'portfolio company summary']
 
 def update_map(map_obj, **args):
     for key, value in args.items():
@@ -85,8 +85,6 @@ def process_page(page, new_doc):
 
     new_page = new_doc.new_page(width=page.rect.width, height=page.rect.height)
     is_rotated_90 = (page.rotation == 90)
-    if is_rotated_90:
-        print('is_rotated')
     # Get all text blocks on the page
     text_blocks = page.get_text("dict")["blocks"]
     
