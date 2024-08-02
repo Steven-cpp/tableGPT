@@ -131,11 +131,17 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
 
     numeric_cols = df.columns.drop([COMPANY_NAME_COL, SECURITY_TYPE_COL, INVESTMENT_DATE], errors="ignore")
     
+    def transform_ownership(s):
+        if isinstance(s, str) and '%' in s:
+            s = s.replace('%', '')
+            s = re.sub(r'[\[\]]', '', s)
+            return float(s) / 100
+        else:
+            return np.nan
+
     # 1. Convert percentage to floating number
     if 'ownership' in df.columns:
-        df = df[df['ownership'].str.contains('%', na=True)]
-        df['ownership'] = df['ownership'].str.replace(r'[\[\]]', '', regex=True)\
-                          .str.rstrip('% ').astype(float) / 100
+        df['ownership'] = df['ownership'].apply(transform_ownership)
 
     # 2. Other Numeric values conversion
     for col in numeric_cols:
@@ -312,23 +318,25 @@ if __name__ == "__main__":
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
-    # test_csv_paths = [
-    #     './output/Lightspeed India Partners III Q2 2023 - Quarterly report-nowm/table_SIT_23.csv'
-    # ]
+    test_csv_paths = [
+        './fabric_download/03_Battery Ventures IX - Q1 2024 - QR.pdf_PST_9.csv'
+    ]
+
 
     processed_report_path, metadata = process_docs(report_paths)
     metadata = pd.DataFrame(metadata)
     metadata['processed_report_path'] = processed_report_path
     err, csv_records = analyze_layout(processed_report_path, metadata)
     if err:
+        print(err)
         raise RuntimeError()
     csv_records = pd.DataFrame(csv_records)
     logging.info('Done: Tables are extracted from PDF files')
     logging.info(csv_records)
 
-    # logging.info('2. Identifying Portfolio Summary Table')
+    logging.info('2. Identifying Portfolio Summary Table')
 
-    # logging.info('3. Processing the Extracted Table')
+    logging.info('3. Processing the Extracted Table')
 
     for csv_path in csv_records['csv_path']:
     # for csv_path in test_csv_paths:
