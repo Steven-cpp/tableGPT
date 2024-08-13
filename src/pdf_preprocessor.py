@@ -97,13 +97,14 @@ def process_page(page, new_doc):
                     if "confidential" not in span["text"].lower() and "@sofinagroup" not in span["text"].lower() and span["size"] < 20:
                         # Add the span text to the new page
                         rec = pymupdf.Rect(span["bbox"][0], span["bbox"][1], span["bbox"][2], span["bbox"][3])
-                        if rec.height > rec.width * 2:
+                        text_lower = span["text"].lower()
+                        if is_rotated_90:
+                            rec[0] = min(rec[0], rec[2])
+                        elif rec.height > rec.width * 2 and "cost" not in text_lower and 'fmv' not in text_lower:
                             new_page.insert_text((rec[2], rec[3] - 5), span["text"].replace('$', ''),
                                              fontsize=span["size"]-0.5, color=(0, 0, 0), rotate=90)
                             continue
                         rec = rec * page.rotation_matrix
-                        if is_rotated_90:
-                            rec[0] = min(rec[0], rec[2])
                         new_page.insert_text((rec[0], rec[1]), span["text"].replace('$', ''),
                                              fontsize=span["size"]-0.5, color=(0, 0, 0))
     
