@@ -100,10 +100,10 @@ def process_page(page, new_doc):
                         text_lower = span["text"].lower()
                         if is_rotated_90:
                             rec[0] = min(rec[0], rec[2])
-                        elif rec.height > rec.width * 2 and "cost" not in text_lower and 'fmv' not in text_lower:
-                            new_page.insert_text((rec[2], rec[3] - 5), span["text"].replace('$', ''),
+                        elif rec.height > rec.width * 1.7:
+                             new_page.insert_text((rec[2] - 2, rec[3] - 8), span["text"].replace('$', ''),
                                              fontsize=span["size"]-0.5, color=(0, 0, 0), rotate=90)
-                            continue
+                             continue
                         rec = rec * page.rotation_matrix
                         new_page.insert_text((rec[0], rec[1]), span["text"].replace('$', ''),
                                              fontsize=span["size"]-0.5, color=(0, 0, 0))

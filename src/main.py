@@ -246,8 +246,21 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     
     df.columns = df.columns.str.replace('*', '', regex=False)
     df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
+
     # Ignore empty column names
     df = df.loc[:, ~df.columns.isna()]
+
+    # Left strip irrelevant columns
+    # 1. Not SIT Table
+    pat_series = 'Series [A-Z](?:-\d+)?|Class [A-Z]|Common Stock|Preferred Stock'
+    is_layered = df.apply(lambda x: x.str.contains(pat_series, regex=True, case=False).any()\
+                          if x.dtype == 'O' else False, axis=0).any()
+    # 2. AND many missing values in the first column
+    cnt_nan = df.iloc[:, 0].isna()
+    is_mostly_empty = sum(cnt_nan) / len(cnt_nan) > 0.3
+
+    if not is_layered and is_mostly_empty:
+        df = df.iloc[:, 1:]
 
     res = pd.DataFrame()
     metric_dict = {
@@ -314,14 +327,13 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Sequoia Capital U.S. Venture 2010 - 06.2023.pdf',
+        './docs/Sequoia Capital China Growth 2010 Fund - Q4 2022 - Letter.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './fabric_download/03_Battery Ventures IX - Q1 2024 - QR.pdf_PST_9.csv'
+        './output/docs/01_HongShan Capital Growth Fund III - Q4 2023 - Letter.pdf_PST_3.csv'
     ]
-
 
     processed_report_path, metadata = process_docs(report_paths)
     metadata = pd.DataFrame(metadata)

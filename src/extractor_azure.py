@@ -18,6 +18,9 @@ def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, proc_
         'csv_path': [],
         'page_ori': []
     }
+
+    # We can assume at most two tables in one page
+    pages_with_table = []
     for table in result.tables:
         tableList = [[None for x in range(table.column_count)] for y in range(table.row_count)] 
         current_page_num = table.bounding_regions[0].page_number
@@ -56,7 +59,11 @@ def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, proc_
             page_new = int(metadata['page_new'].iloc[0])
             fund_name = report_path.split('/')[-2]
             dir_path = os.path.join(output_dir, fund_name)
-            csv_path = os.path.join(dir_path, f'{page_new:02d}_{report_name}_{table_type}_{page_ori}.csv')
+            if page_ori not in pages_with_table:
+                csv_path = os.path.join(dir_path, f'{page_new:02d}_{report_name}_{table_type}_{page_ori}.csv')
+            else:
+                csv_path = os.path.join(dir_path, f'{page_new:02d}_{report_name}_{table_type}_{page_ori}(1).csv')
+            pages_with_table.append(page_ori)
             update_map(metadata_csv,
                        report_path=report_path,
                        report_name=report_name,
