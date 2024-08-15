@@ -159,8 +159,9 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     df = __preprocess_total(df)
 
     # 5. Remove rows of empty company name or contain ['Total', 'Investment']
-    df = df[~(df[df.columns[0]].str.contains('Total|Realized', case=False, na=False)\
-            | (df.iloc[:, 0].isna()))]
+    name_mask = df[df.columns[0]].str.contains('Total|Realized', case=False, na=False) | (df.iloc[:, 0].isna())
+    real_total_mask = df['is_total']
+    df = df[~name_mask | real_total_mask]
     
     # 6. Value self-validation
     cross_check_cols = ['unrealize_value', 'realized_value', 'total']
@@ -235,6 +236,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     if PDF_EXTRACTION_API == 'Azure':
         df = df.drop(columns=df.columns[0])
 
+    ## 1. Column Name Cleaning
     # If the column row is mis-identified, then the label 
     unnamed_mask_1r = df.columns.str.contains('Unnamed:')
     unnamed_mask_2r = df.iloc[0, :].isna().to_numpy()
@@ -258,9 +260,20 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     # 2. AND many missing values in the first column
     cnt_nan = df.iloc[:, 0].isna()
     is_mostly_empty = sum(cnt_nan) / len(cnt_nan) > 0.3
-
+    # 3. Do the strip
     if not is_layered and is_mostly_empty:
         df = df.iloc[:, 1:]
+
+    ## 2. Totals row cleaning
+    # If the totals are split into a separate column,
+    # try to append this column into the left column.
+    mask_interpolated = ~df.iloc[:, 0].isna() & ~df.iloc[:, 1].isna()
+    if sum(mask_interpolated) == 0:
+        # Merge strings in 1st column and 2nd column
+        mask_to_merge = ~df.iloc[:, 1].isna()
+        df.loc[mask_to_merge, df.columns[0]] = df.loc[mask_to_merge, df.columns[1]]
+        # Now drop the second column since it's merged into the first
+        df.drop(df.columns[1], axis=1, inplace=True)
 
     res = pd.DataFrame()
     metric_dict = {
@@ -327,7 +340,7 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Sequoia Capital China Growth 2010 Fund - Q4 2022 - Letter.pdf',
+        './docs/Sequoia Capital China Growth 2010 Fund - Q1 2023 - QR.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
