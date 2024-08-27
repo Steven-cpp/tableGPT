@@ -78,9 +78,16 @@
         [
             {
                 "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value"],
-                "Method": "Contain",
+                "Method": "Match",
                 "LookAround": "Unrealized",
                 "Priority": 1,
+                "KeepLast": true
+            },
+            {
+                "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value"],
+                "Method": "Contain",
+                "LookAround": "Unrealized",
+                "Priority": 2,
                 "KeepLast": true
             }
         ]
