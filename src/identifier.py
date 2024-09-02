@@ -85,9 +85,8 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
         case _:
             raise ValueError(f"Invalid method: {rule['Method']}")
 
-    if 'KeepLast' in rule:
-        if len(filtered_cols) > 1:
-            filtered_cols = [filtered_cols[-1]]
+    if 'KeepLast' in rule and len(filtered_cols) > 1:
+        filtered_cols = [filtered_cols[-1]] if rule['KeepLast'] else [filtered_cols[0]]
 
     # Look around neighbors
     if 'LookAround' in rule:
