@@ -60,12 +60,12 @@ def __is_continuation(x1: list, x2: list, n: int) -> bool:
 
 
 
-def __contain_pst_keywords(text_lower: str, rule_path: str, n=3) -> bool:
+def __contain_pst_keywords(text_lower: str, rule_config, n=3) -> bool:
     """ Check whether the page contains keywords that may construct PST
 
     Args:
         text_lower (str): all the texts of one page in lower cases
-        rule_path (str): the path of `config.json`
+        rule_config (json): the rule defined by `config.json`
         n (int, optional): the least number of keywords to be matched. Defaults to 4.
 
     Returns:
@@ -74,7 +74,6 @@ def __contain_pst_keywords(text_lower: str, rule_path: str, n=3) -> bool:
             * False: keywords not sufficient, ignore this page
     """
     target_metrics = ['total_cost', 'unrealized_value', 'realized_value', 'total', 'gross_moic']
-    rule_config = json.load(open(rule_path))
     mask = [False] * len(rule_config)
     for idx, metric in enumerate(rule_config):
         if metric not in target_metrics:
@@ -112,6 +111,7 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
     }
     cnt_page = 0
     new_doc = pymupdf.open()
+    rule_config = json.load(open(rule_path))
     for path in report_paths:
         try:
             doc = pymupdf.open(path)
@@ -121,7 +121,7 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
         cnt_page_lst = cnt_page
         last_page_xs = None
         for id, page in enumerate(doc):
-            table_type, current_xs = process_page(page, new_doc, rule_path, last_page_xs)
+            table_type, current_xs = process_page(page, new_doc, rule_config, last_page_xs)
             last_page_xs = current_xs
             if table_type == '':
                 continue
@@ -141,7 +141,7 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
     return output_path, doc_map
 
 
-def process_page(page, new_doc, rule_path, last_page_xs):
+def process_page(page, new_doc, rule_config, last_page_xs):
     page_text_lower = page.get_text().lower().replace('\n', '')
     table_type = ''
     current_page_cols = -1
@@ -149,7 +149,7 @@ def process_page(page, new_doc, rule_path, last_page_xs):
         table_type = 'SIT'
     elif any(keyword in page_text_lower for keyword in pst_keywords):
         table_type = 'PST'
-    elif (__contain_pst_keywords(page_text_lower, rule_path, n=3) 
+    elif (__contain_pst_keywords(page_text_lower, rule_config, n=3) 
           and len(page.find_tables(strategy='text').tables) > 0):
         table_type = 'PST'
     elif last_page_xs:
@@ -187,7 +187,7 @@ def process_page(page, new_doc, rule_path, last_page_xs):
                         span_txts.append(span["text"].lower())
                         if is_rotated_90:
                             rec[0] = min(rec[0], rec[2])
-                        elif rec.height > rec.width * 1.7:
+                        elif rec.height > rec.width * 1.85:
                              new_page.insert_text((rec[2] - 2, rec[3] - 8), span["text"].replace('$', ''),
                                              fontsize=span["size"]-0.5, color=(0, 0, 0), rotate=90)
                              continue
