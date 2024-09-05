@@ -22,26 +22,14 @@ def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, proc_
     # We can assume at most two tables in one page
     pages_with_table = []
     for table in result.tables:
-        tableList = [[None for x in range(table.column_count)] for y in range(table.row_count)] 
+        tableList = [['' for x in range(table.column_count)] for y in range(table.row_count)] 
         current_page_num = table.bounding_regions[0].page_number
-        merged_row_ids = []
         for cell in table.cells:
-            # 1. if rowSpan > 1: row_index += 1 for rows == rowIndex
-            if "row_span" in cell:
-                if cell.row_span == 2:
-                    merged_row_ids.append(cell.row_index)
-                elif cell.row_span > 2:
-                    raise UnsupportedMergedCellError(cell.content)
-
-            # 2. AND if columnSpan > 1: duplicate to separate cells downwards
-            if cell.row_index in merged_row_ids:
-                cell.row_index += 1
-            if "column_span" in cell:
+            if cell.row_index + 1 < table.row_count and "columnSpan" in cell:
                 for offset in range(cell.column_span):
-                    tableList[cell.row_index][cell.column_index + offset] = cell.content.replace('\n', ' ')
+                    tableList[cell.row_index + 1][cell.column_index + offset] = cell.content.replace('\n', ' ') + ' '
             else:
-                tableList[cell.row_index][cell.column_index] = cell.content.replace('\n', ' ')
-
+                tableList[cell.row_index][cell.column_index] += cell.content.replace('\n', ' ')
         df = pd.DataFrame.from_records(tableList)
         # Set the header row
         df.columns = df.iloc[0] 
