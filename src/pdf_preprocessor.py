@@ -60,11 +60,11 @@ def __is_continuation(x1: list, x2: list, n: int) -> bool:
 
 
 
-def __contain_pst_keywords(text_lower: str, rule_config, n=3) -> bool:
-    """ Check whether the page contains keywords that may construct PST
+def __contain_pst_keywords(page, rule_config, n=3) -> bool:
+    """ Check whether the top of the page contains keywords that may construct PST
 
     Args:
-        text_lower (str): all the texts of one page in lower cases
+        page (page): the page object to be checked
         rule_config (json): the rule defined by `config.json`
         n (int, optional): the least number of keywords to be matched. Defaults to 4.
 
@@ -75,6 +75,25 @@ def __contain_pst_keywords(text_lower: str, rule_config, n=3) -> bool:
     """
     target_metrics = ['total_cost', 'unrealized_value', 'realized_value', 'total', 'gross_moic']
     mask = [False] * len(rule_config)
+    top_at = 1/6
+
+    # Capture all the texts within the `top_at` region
+    text = ''
+    text_blocks = page.get_text('dict')['blocks']
+    for block in text_blocks:
+        if "bbox" in block and block['bbox'][1] > page.rect.height * top_at:
+            break
+        if "lines" in block:
+            for line in block['lines']:
+                if not (abs(line['dir'][0] - 1) < 0.01 or abs(line['dir'][0] - 0) < 0.01 or abs(line['dir'][0] + 1) < 0.01):
+                    continue
+                for span in line["spans"]:
+                    # Check for watermark properties
+                    if "confidential" not in span["text"].lower() and "@sofinagroup" not in span["text"].lower() and span["size"] < 20:
+                        # Add the span text to the new page
+                        text += span["text"]
+    text_lower = text.lower()
+
     for idx, metric in enumerate(rule_config):
         if metric not in target_metrics:
             continue
@@ -144,16 +163,17 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
 def process_page(page, new_doc, rule_config, last_page_xs):
     page_text_lower = page.get_text().lower().replace('\n', '')
     table_type = ''
+    check_continuation = False
     current_page_cols = -1
     if any(keyword in page_text_lower for keyword in sit_keywords):
         table_type = 'SIT'
     elif any(keyword in page_text_lower for keyword in pst_keywords):
         table_type = 'PST'
-    elif (__contain_pst_keywords(page_text_lower, rule_config, n=3) 
-          and len(page.find_tables(strategy='text').tables) > 0):
+    elif (__contain_pst_keywords(page, rule_config, n=3)):
         table_type = 'PST'
     elif last_page_xs:
         table_type = 'PST'
+        check_continuation = True
     else:
         return '', None
     
@@ -178,12 +198,6 @@ def process_page(page, new_doc, rule_config, last_page_xs):
                         # Add the span text to the new page
                         span_xs.append(span["bbox"][0])
                         rec = pymupdf.Rect(span["bbox"][0], span["bbox"][1], span["bbox"][2], span["bbox"][3])
-                        if rec[2] - rec[0] != 0:
-                            slope = (rec[3] - rec[1]) / (rec[2] - rec[0])
-                        else:
-                            slope = 1
-                        if slope < 0:
-                            continue
                         span_txts.append(span["text"].lower())
                         if is_rotated_90:
                             rec[0] = min(rec[0], rec[2])
@@ -197,7 +211,7 @@ def process_page(page, new_doc, rule_config, last_page_xs):
 
     span_xs_top, span_xs_tail = list(set(span_xs[:32])), list(set(span_xs[-32:]))
     # span_txts_top, span_txts_tail = span_txts[:32], span_txts[-32:]
-    if last_page_xs and not __is_continuation(span_xs_top, last_page_xs, n=5):
+    if last_page_xs and check_continuation and not __is_continuation(span_xs_top, last_page_xs, n=5):
         page_index = new_doc.page_count - 1
         new_doc.delete_page(page_index)
         return '', None        
