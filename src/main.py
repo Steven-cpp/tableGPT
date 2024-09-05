@@ -1,6 +1,7 @@
 import logging
 import json
 import re
+import os
 import pandas as pd
 import numpy as np
 from dotenv import load_dotenv 
@@ -91,7 +92,7 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: the original df with a new `isTotal` column
     """
-    rule_contain = ['Total Investments', 'Total Portfolio Investments']
+    rule_contain = ['Total Investments', 'Total Portfolio Investments', 'Total Portfolio']
     rule_equal = ['Total', '', 'Totals']
     # Check last two rows only
     rule_lastNRows = 2
@@ -145,7 +146,7 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
 
     # 2. Other Numeric values conversion
     for col in numeric_cols:
-        df[col] = df[col].replace('[$,]', '', regex=True)\
+        df[col] = df[col].replace('[$,x]', '', regex=True)\
                   .replace(r'\((.+?)\)', r'-\1', regex=True)
         df[col] = pd.to_numeric(df[col], errors='coerce')
     
@@ -203,6 +204,41 @@ def extract_port(rule_path: str, csv_path: str) -> Tuple[Optional[ErrorCode], Op
     logging.info('Final Table of %s: \n %s', csv_path, port)
     return None, port, metric
 
+def __contain_pst_keywords(text: str, rule_config, n=2) -> bool:
+    """ Check whether the string contains keywords that may construct PST
+
+    Args:
+        text (str): the texts to check
+        rule_config (json): the rule defined by `config.json`
+        n (int, optional): the least number of keywords to be matched. Defaults to 4.
+
+    Returns:
+        bool: whether the page contains sufficient keywords
+            * True: there are sufficient keywords, should further check
+            * False: keywords not sufficient, ignore this page
+    """
+    target_metrics = ['total_cost', 'unrealized_value', 'realized_value', 'total', 'gross_moic']
+    mask = [False] * len(rule_config)
+    text_lower = text.lower()
+
+    for idx, metric in enumerate(rule_config):
+        if metric not in target_metrics:
+            continue
+        rule = rule_config[metric]
+        if 'ColumnNamePattern' not in rule:
+            continue
+        namePatterns = rule['ColumnNamePattern']
+        for rule in namePatterns:
+            if 'isRegex' in rule:
+                continue
+            patterns = rule['Patterns']
+            for pat in patterns:
+                if pat.lower() in text_lower:
+                    mask[idx] = True
+                    text_lower = text_lower.replace(pat.lower(), '')
+                    continue
+    return True if sum(mask) >= n else False
+
 
 def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -236,15 +272,22 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     if PDF_EXTRACTION_API == 'Azure':
         df = df.drop(columns=df.columns[0])
 
-    ## 1. Column Name Cleaning
-    # If the column row is mis-identified, then the label 
-    unnamed_mask_1r = df.columns.str.contains('Unnamed:')
-    unnamed_mask_2r = df.iloc[0, :].isna().to_numpy()
-    not_misplaced = sum((unnamed_mask_1r.astype(int) + unnamed_mask_2r.astype(int)) == 0)
+    ## 0. Restore the continued table if it does not have header
+    invalid_cols = [col for col in df.columns if not __is_valid_column_name(col)]
+    if len(invalid_cols) > 0:
+        raise InvalidTableWarning()
 
-    if not not_misplaced:
-        df.columns = [df.iloc[0, i] if type(df.iloc[0, i]) is str else df.columns[i] for i in range(len(df.columns))]
+    ## 1. Column Name Cleaning
+    # If the column row is mis-identified, then the label
+    subheader = ' '.join([s for s in df.iloc[0, :].to_list() if isinstance(s, str)])
+    is_misplaced = __contain_pst_keywords(subheader, rule_config, n=2)
+    if is_misplaced:
+        df.columns = [df.columns[i] + df.iloc[0, i] if type(df.iloc[0, i]) is str else df.columns[i] for i in range(len(df.columns))]
         df = df.drop([0]).reset_index(drop=True)
+    # Clear `:unselected:` or `:selected:` from the cell
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].str.replace(':unselected:', '')
+        df[col] = df[col].str.replace(':selected:', '')
     
     df.columns = df.columns.str.replace('*', '', regex=False)
     df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
@@ -281,6 +324,10 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
         'src': [],
         'rule': [],
     }
+
+    # Ignore summary table
+    if 'summary' in df.columns[0].lower():
+        return pd.DataFrame(), pd.DataFrame()
 
     for metric in rule_config:
         try:
@@ -321,7 +368,16 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
         return pd.DataFrame(), pd.DataFrame()
 
     return port, pd.DataFrame(metric_dict)
-  
+
+
+def __is_valid_column_name(col_name) -> bool:
+    if col_name is None:
+        return True
+    col_name = str(col_name)
+    if col_name.isdigit():
+        return False
+    return True
+
 
 if __name__ == "__main__":
     logging.basicConfig(filename='output.log', \
@@ -340,19 +396,19 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Sequoia Capital China Growth 2010 Fund - Q1 2023 - QR.pdf',
+        './docs/Insight Venture Partners (Cayman) X - Q1 2024 - QR.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/docs/01_HongShan Capital Growth Fund III - Q4 2023 - Letter.pdf_PST_3.csv'
+        './fabric_download/05_Battery Ventures XI - Q1 2024 - QR.pdf_PST_60.csv'
     ]
 
-    processed_report_path, metadata = process_docs(report_paths)
+    processed_report_path, metadata = process_docs(report_paths, rule_path)
     metadata = pd.DataFrame(metadata)
     metadata['processed_report_path'] = processed_report_path
     err, csv_records = analyze_layout(processed_report_path, metadata)
-    if err:
+    if err: 
         print(err)
         raise RuntimeError()
     csv_records = pd.DataFrame(csv_records)
