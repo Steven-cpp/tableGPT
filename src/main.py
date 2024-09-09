@@ -98,6 +98,8 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
     rule_lastNRows = 2
 
     def is_total(header) -> bool:
+        if pd.isna(header):
+            return True
         if not isinstance(header, str):
             return False
         header = header.lower().strip()
@@ -146,7 +148,7 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
 
     # 2. Other Numeric values conversion
     for col in numeric_cols:
-        df[col] = df[col].replace('[$,x]', '', regex=True)\
+        df[col] = df[col].replace(r'[$,x\s]', '', regex=True)\
                   .replace(r'\((.+?)\)', r'-\1', regex=True)
         df[col] = pd.to_numeric(df[col], errors='coerce')
     
@@ -326,7 +328,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     }
 
     # Ignore summary table
-    if 'summary' in df.columns[0].lower():
+    if 'summary of' in df.columns[0].lower():
         return pd.DataFrame(), pd.DataFrame()
 
     for metric in rule_config:
@@ -396,12 +398,12 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Insight Venture Partners (Cayman) X - Q1 2024 - QR.pdf',
+        './docs/Sequoia Capital India VI - Q4 2023 - Fund Report.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './fabric_download/05_Battery Ventures XI - Q1 2024 - QR.pdf_PST_60.csv'
+        './output/docs/01_Sequoia Capital India VI - Q4 2023 - Fund Report.pdf_PST_3.csv'
     ]
 
     processed_report_path, metadata = process_docs(report_paths, rule_path)

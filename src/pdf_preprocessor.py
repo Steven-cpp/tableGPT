@@ -27,7 +27,7 @@ pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently 
                 'investment multiple and gross irr', 'portfolio company summary', 'investment performance']
 
 
-def __is_continuation(x1: list, x2: list, n: int) -> bool:
+def __is_continuation(spans_1: list, spans_2: list, n: int) -> bool:
     """ Check if x2 is the continuation of x1 by checking x axis matches
 
     Args:
@@ -40,6 +40,7 @@ def __is_continuation(x1: list, x2: list, n: int) -> bool:
          * True: more than `n` pairs of x1-x2 matches
          * False: less than `n` pairs of x1-x2 matches
     """
+    x1, x2 = list(set([s['bbox'][0] for s in spans_1])), list(set([s['bbox'][0] for s in spans_2]))
     x1.sort()
     x2.sort()
     i, j, cnt = 0, 0, 0
@@ -59,14 +60,86 @@ def __is_continuation(x1: list, x2: list, n: int) -> bool:
     return True if cnt >= n else False
 
 
+def insert_header(page, spans_top, last_spans_top, rule_config):
+    """ Insert header to page containing continued headless table
 
-def __contain_pst_keywords(page, rule_config, n=3) -> bool:
+    Args:
+        page: _descrition_
+        spans_top: _description_
+        last_spans_top: _description_
+    """
+    y = 0
+    spans_header = []
+    target_metrics = ['ownership', 'total_cost', 'unrealized_value', 'realized_value']
+    # 1. Find the horizontal line to insert
+    for span in spans_top:
+        if span['text'].strip().isnumeric():
+            y = int(span['bbox'][1])
+            break
+    if y <= 0:
+        logging.warning('insert_header(): Failed to find the horizontal line to insert')
+        return False
+    
+    # 2. Identify all bboxes that contain PST keywords
+    for span in last_spans_top:
+        metric, _ = __contain_pst_keyword(span['text'], rule_config, target_metrics, ignore_word=False)
+        if metric:
+            spans_header.append(span)
+            target_metrics.remove(metric)
+
+    # 3. Insert all these bboxes just above the horizontal line
+    for span in spans_header:
+        rec = pymupdf.Rect(span["bbox"][0], span["bbox"][1], span["bbox"][2], span["bbox"][3])
+        if rec.height > rec.width * 1.9:
+            page.insert_text((rec[2] - 2, y - 12), span["text"].replace('$', ''),
+                                fontsize=span["size"]-0.5, color=(0, 0, 0), rotate=90)
+        else:
+            page.insert_text((rec[0], y - 12), span["text"].replace('$', ''),
+                                fontsize=span["size"]-0.5, color=(0, 0, 0))
+        
+    return True
+
+
+def __contain_pst_keyword(s: str, rule_config: dict, target_metrics: list, ignore_word:bool):
+    """ Check whether the given string `s` contains keywords that may construct PST
+
+    Args:
+        s (str): the string to be checked
+        rule_config (dict): the identification rule defined by `config.json`
+        target_metrics (list): the target metrics to check.
+        ignore_word (bool):
+            * True: ignore single keyword while matching (at least two words)
+            * False: allow single keyword matching
+
+    Returns:
+        str: the metric name in the `rule_config` that got matched, `None` if no matches
+        str: the matched text, `None` if no matches
+
+    """
+    for idx, metric in enumerate(rule_config):
+        if metric not in target_metrics:
+            continue
+        rule = rule_config[metric]
+        if 'ColumnNamePattern' not in rule:
+            continue
+        namePatterns = rule['ColumnNamePattern']
+        for rule in namePatterns:
+            if 'isRegex' in rule:
+                continue
+            patterns = rule['Patterns']
+            for pat in patterns:
+                if pat.lower() in s.lower() and ((not ignore_word) or (ignore_word and len(pat.split()) > 1)):
+                    return metric, pat.lower()
+    return None, None
+
+
+def contain_pst_keywords(page, rule_config, n=3) -> bool:
     """ Check whether the top of the page contains keywords that may construct PST
 
     Args:
         page (page): the page object to be checked
         rule_config (json): the rule defined by `config.json`
-        n (int, optional): the least number of keywords to be matched. Defaults to 4.
+        n (int, optional): the least number of keywords to be matched. Defaults to 3.
 
     Returns:
         bool: whether the page contains sufficient keywords
@@ -74,8 +147,8 @@ def __contain_pst_keywords(page, rule_config, n=3) -> bool:
             * False: keywords not sufficient, ignore this page
     """
     target_metrics = ['total_cost', 'unrealized_value', 'realized_value', 'total', 'gross_moic']
-    mask = [False] * len(rule_config)
     top_at = 1/6
+    cnt = 0
 
     # Capture all the texts within the `top_at` region
     text = ''
@@ -94,22 +167,11 @@ def __contain_pst_keywords(page, rule_config, n=3) -> bool:
                         text += span["text"]
     text_lower = text.lower()
 
-    for idx, metric in enumerate(rule_config):
-        if metric not in target_metrics:
-            continue
-        rule = rule_config[metric]
-        if 'ColumnNamePattern' not in rule:
-            continue
-        namePatterns = rule['ColumnNamePattern']
-        for rule in namePatterns:
-            if 'isRegex' in rule:
-                continue
-            patterns = rule['Patterns']
-            for pat in patterns:
-                if len(pat.split()) > 1 and pat.lower() in text_lower:
-                    mask[idx] = True
-                    continue
-    return True if sum(mask) >= n else False
+    for t in target_metrics:
+        _, m = __contain_pst_keyword(text_lower, rule_config, t, ignore_word=True)
+        cnt = cnt + 1 if m else cnt
+
+    return True if cnt >= n else False
 
 
 def update_map(map_obj, **args):
@@ -138,10 +200,10 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
             logging.warning(f'Failed to read the report: {e}.')
             continue
         cnt_page_lst = cnt_page
-        last_page_xs = None
+        last_page_tail, last_page_top = None, None
         for id, page in enumerate(doc):
-            table_type, current_xs = process_page(page, new_doc, rule_config, last_page_xs)
-            last_page_xs = current_xs
+            table_type, current_tail, current_top = process_page(page, new_doc, rule_config, last_page_tail, last_page_top)
+            last_page_tail, last_page_top = current_tail, current_top
             if table_type == '':
                 continue
             update_map(doc_map, report_path=path, report_name=path.split('/')[-1],
@@ -160,7 +222,7 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
     return output_path, doc_map
 
 
-def process_page(page, new_doc, rule_config, last_page_xs):
+def process_page(page, new_doc, rule_config, last_page_tail, last_page_top):
     page_text_lower = page.get_text().lower().replace('\n', '')
     table_type = ''
     check_continuation = False
@@ -169,23 +231,24 @@ def process_page(page, new_doc, rule_config, last_page_xs):
         table_type = 'SIT'
     elif any(keyword in page_text_lower for keyword in pst_keywords):
         table_type = 'PST'
-    elif (__contain_pst_keywords(page, rule_config, n=3)):
+    elif (contain_pst_keywords(page, rule_config, n=3)):
         table_type = 'PST'
-    elif last_page_xs:
+    elif last_page_tail:
         table_type = 'PST'
         check_continuation = True
     else:
-        return '', None
+        return '', None, None
     
     if len(page_text_lower) < 200:
-        return '', None
+        return '', None, None
 
     new_page = new_doc.new_page(width=page.rect.width, height=page.rect.height)
     is_rotated_90 = (page.rotation == 90)
     # Get all text blocks on the page
     text_blocks = page.get_text("dict")["blocks"]
-    span_xs, span_txts = [], []
+    spans, span_txts = [], []
     
+
     for block in text_blocks:
         # Filter for text lines
         if "lines" in block:
@@ -196,12 +259,12 @@ def process_page(page, new_doc, rule_config, last_page_xs):
                     # Check for watermark properties
                     if "confidential" not in span["text"].lower() and "@sofinagroup" not in span["text"].lower() and span["size"] < 20:
                         # Add the span text to the new page
-                        span_xs.append(span["bbox"][0])
+                        spans.append(span)
                         rec = pymupdf.Rect(span["bbox"][0], span["bbox"][1], span["bbox"][2], span["bbox"][3])
                         span_txts.append(span["text"].lower())
                         if is_rotated_90:
                             rec[0] = min(rec[0], rec[2])
-                        elif rec.height > rec.width * 1.85:
+                        elif rec.height > rec.width * 1.9:
                              new_page.insert_text((rec[2] - 2, rec[3] - 8), span["text"].replace('$', ''),
                                              fontsize=span["size"]-0.5, color=(0, 0, 0), rotate=90)
                              continue
@@ -209,12 +272,14 @@ def process_page(page, new_doc, rule_config, last_page_xs):
                         new_page.insert_text((rec[0], rec[1]), span["text"].replace('$', ''),
                                              fontsize=span["size"]-0.5, color=(0, 0, 0))
 
-    span_xs_top, span_xs_tail = list(set(span_xs[:32])), list(set(span_xs[-32:]))
+    spans_top, spans_tail = spans[:32], spans[-32:]
     # span_txts_top, span_txts_tail = span_txts[:32], span_txts[-32:]
-    if last_page_xs and check_continuation and not __is_continuation(span_xs_top, last_page_xs, n=5):
-        page_index = new_doc.page_count - 1
-        new_doc.delete_page(page_index)
-        return '', None        
-
-
-    return table_type, span_xs_tail
+    if last_page_tail and check_continuation:
+        if not __is_continuation(spans_top, last_page_tail, n=5):
+            page_index = new_doc.page_count - 1
+            new_doc.delete_page(page_index)
+            return '', None, None
+        else:
+            insert_header(new_page, spans_top, last_page_top, rule_config)
+            
+    return table_type, spans_tail, spans_top

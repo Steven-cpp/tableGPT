@@ -25,7 +25,7 @@ def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, proc_
         tableList = [['' for x in range(table.column_count)] for y in range(table.row_count)] 
         current_page_num = table.bounding_regions[0].page_number
         for cell in table.cells:
-            if cell.row_index + 1 < table.row_count and "columnSpan" in cell:
+            if cell.row_index == 0 and "columnSpan" in cell:
                 for offset in range(cell.column_span):
                     tableList[cell.row_index + 1][cell.column_index + offset] = cell.content.replace('\n', ' ') + ' '
             else:
