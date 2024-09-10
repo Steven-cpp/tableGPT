@@ -47,11 +47,11 @@ def to_pandas(result: AnalyzeResult, doc_map:pd.DataFrame, output_dir:str, proc_
             page_new = int(metadata['page_new'].iloc[0])
             fund_name = report_path.split('/')[-2]
             dir_path = os.path.join(output_dir, fund_name)
-            if page_ori not in pages_with_table:
+            if page_new not in pages_with_table:
                 csv_path = os.path.join(dir_path, f'{page_new:02d}_{report_name}_{table_type}_{page_ori}.csv')
             else:
                 csv_path = os.path.join(dir_path, f'{page_new:02d}_{report_name}_{table_type}_{page_ori}(1).csv')
-            pages_with_table.append(page_ori)
+            pages_with_table.append(page_new)
             update_map(metadata_csv,
                        report_path=report_path,
                        report_name=report_name,
