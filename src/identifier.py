@@ -49,7 +49,7 @@ def check_rule(df: pd.DataFrame, pat: dict, type: str, p:int) -> pd.DataFrame | 
         except Exception as e:
             logging.error('Check rule name failed, columns: ', df.columns, 'rule: ', rule)
             options = None
-        if options is None:
+        if options is None or len(options.columns) == 0:
             continue
         return options
     return None
