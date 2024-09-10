@@ -112,7 +112,6 @@
             {
                 "Patterns": ["Proceeds", "Realized Value", "Amount Realized", "Valuation Realized", "Unrealized Gain"],
                 "Method": "Contain",
-                "LookAround": "Realized",
                 "Priority": 1
             },
             {
@@ -130,14 +129,12 @@
             {
                 "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value"],
                 "Method": "Match",
-                "LookAround": "Unrealized",
                 "Priority": 1,
                 "KeepLast": true
             },
             {
                 "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value", "Unrealized Gain"],
                 "Method": "Contain",
-                "LookAround": "Unrealized",
                 "Priority": 2,
                 "KeepLast": true
             }

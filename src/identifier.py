@@ -88,38 +88,38 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
     if 'KeepLast' in rule and len(filtered_cols) > 1:
         filtered_cols = [filtered_cols[-1]] if rule['KeepLast'] else [filtered_cols[0]]
 
-    # Look around neighbors
-    if 'LookAround' in rule:
-        key = rule['LookAround'].lower()
-        if len(filtered_cols) == 1:
-            return df[filtered_cols]
-        elif len(filtered_cols) == 0:
-            # 1. Generate the new pattern
-            patterns_look = [pattern.replace(key, '').strip() for pattern in patterns if key in pattern]
-            if not patterns_look:
-                return None
-            # 2. Find if there are any matches with the new pattern
-            if rule['Method'] == 'Match':
-                filtered_cols = df.columns[columns_lower.isin(patterns_look)]
-            elif rule['Method'] == 'Contain':
-                filtered_cols = df.columns[columns_lower.str.contains('|'.join(patterns_look), case=False)]
-            else:
-                return None
-        # 3. Check whether neighbor contains such keyword
-        # If there are multiple matches, can also use LookAround to further filter
-        filtered_col_idxs = [df.columns.get_loc(col) for col in filtered_cols]
-        res = []
-        for i, col_id in enumerate(filtered_col_idxs):
-            if not isinstance(col_id, int):
-                logging.warning(f'Multi-match column name: {filtered_cols[i]} in columns: {df.columns}')
-                continue
-            if col_id == 0 or col_id == len(df.columns) - 1:
-                logging.warning(f'The LookAround is taken at the side of the table: \
-                        col_id = {col_id}, col_name = {filtered_cols[i]}')
-                continue
-            if key in columns_lower[col_id - 1] or key in columns_lower[col_id + 1]:
-                res.append(df.columns[col_id])
-        return df[res]
+    ## Look around neighbors. We do not need `LookAround` since this part is largely done in preprocessing
+    # if 'LookAround' in rule:
+    #     key = rule['LookAround'].lower()
+    #     if len(filtered_cols) == 1:
+    #         return df[filtered_cols]
+    #     elif len(filtered_cols) == 0:
+    #         # 1. Generate the new pattern
+    #         patterns_look = [pattern.replace(key, '').strip() for pattern in patterns if key in pattern]
+    #         if not patterns_look:
+    #             return None
+    #         # 2. Find if there are any matches with the new pattern
+    #         if rule['Method'] == 'Match':
+    #             filtered_cols = df.columns[columns_lower.isin(patterns_look)]
+    #         elif rule['Method'] == 'Contain':
+    #             filtered_cols = df.columns[columns_lower.str.contains('|'.join(patterns_look), case=False)]
+    #         else:
+    #             return None
+    #     # 3. Check whether neighbor contains such keyword
+    #     # If there are multiple matches, can also use LookAround to further filter
+    #     filtered_col_idxs = [df.columns.get_loc(col) for col in filtered_cols]
+    #     res = []
+    #     for i, col_id in enumerate(filtered_col_idxs):
+    #         if not isinstance(col_id, int):
+    #             logging.warning(f'Multi-match column name: {filtered_cols[i]} in columns: {df.columns}')
+    #             continue
+    #         if col_id == 0 or col_id == len(df.columns) - 1:
+    #             logging.warning(f'The LookAround is taken at the side of the table: \
+    #                     col_id = {col_id}, col_name = {filtered_cols[i]}')
+    #             continue
+    #         if key in columns_lower[col_id - 1] or key in columns_lower[col_id + 1]:
+    #             res.append(df.columns[col_id])
+    #     return df[res]
     return df[filtered_cols]
         
 def __check_rule_value(df: pd.DataFrame, rule: dict) -> pd.DataFrame | None:
