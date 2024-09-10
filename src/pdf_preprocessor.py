@@ -24,7 +24,8 @@ import os
 
 sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedule']
 pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently in the portfolio', 'investments as of',
-                'investment multiple and gross irr', 'portfolio company summary', 'investment performance']
+                'investment multiple and gross irr', 'portfolio company summary', 'investment performance', 
+                'portfolio company summaries', 'portfolio valuations by company']
 
 
 def __is_continuation(spans_1: list, spans_2: list, n: int) -> bool:
