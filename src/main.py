@@ -92,7 +92,7 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: the original df with a new `isTotal` column
     """
-    rule_contain = ['Total Investments', 'Total Portfolio Investments', 'Total Portfolio']
+    rule_contain = ['Total Investments', 'Total Portfolio Investments', 'Total Portfolio', 'Total Unrealized +']
     rule_equal = ['Total', '', 'Totals']
     # Check last two rows only
     rule_lastNRows = 2
@@ -138,6 +138,7 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
         if isinstance(s, str) and '%' in s:
             s = s.replace('%', '')
             s = re.sub(r'[\[\]]', '', s)
+            s = re.sub(r'\((.+?)\)', r'-\1', s)
             return float(s) / 100
         else:
             return np.nan
@@ -145,6 +146,9 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     # 1. Convert percentage to floating number
     if 'ownership' in df.columns:
         df['ownership'] = df['ownership'].apply(transform_ownership)
+    
+    if 'gross_irr' in df.columns:
+        df['gross_irr'] = df['gross_irr'].apply(transform_ownership)
 
     # 2. Other Numeric values conversion
     for col in numeric_cols:
@@ -284,7 +288,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     subheader = ' '.join([s for s in df.iloc[0, :].to_list() if isinstance(s, str)])
     is_misplaced = __contain_pst_keywords(subheader, rule_config, n=2)
     if is_misplaced:
-        df.columns = [df.columns[i] + df.iloc[0, i] if type(df.iloc[0, i]) is str else df.columns[i] for i in range(len(df.columns))]
+        df.columns = [df.columns[i] + ' ' + df.iloc[0, i] if type(df.iloc[0, i]) is str else df.columns[i] for i in range(len(df.columns))]
         df = df.drop([0]).reset_index(drop=True)
     # Clear `:unselected:` or `:selected:` from the cell
     for col in df.select_dtypes(include=['object']).columns:
@@ -398,12 +402,12 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Sequoia Capital India VI - Q4 2023 - Fund Report.pdf',
+        './docs/ICONIQ Strategic Partners IV-B - Q1 2024 - FS.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/docs/01_Sequoia Capital India VI - Q4 2023 - Fund Report.pdf_PST_3.csv'
+        './output/docs/01_ICONIQ Strategic Partners IV-B - Q4 2023 - Letter.pdf_PST_1.csv'
     ]
 
     processed_report_path, metadata = process_docs(report_paths, rule_path)
