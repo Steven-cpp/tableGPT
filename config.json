@@ -21,7 +21,8 @@
             {
                 "Patterns": ["Date"],
                 "Method": "Contain",
-                "Priority": 1
+                "Priority": 1,
+                "KeepLast": false
             }
         ]
     },
@@ -30,13 +31,13 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Total Cost", "Total Invested", "Total Basis", "Total Investment"],
-                "Method": "Contain",
+                "Patterns": ["Total Cost", "Total Invested", "Total Basis", "Total Investment", "Cumulative Investment", "Capital Invested"],
+                "Method": "Match",
                 "Priority": 1
             },
             {
                 "Patterns": ["Cost", "Invested", "Basis"],
-                "Method": "Match",
+                "Method": "Contain",
                 "Priority": 2,
                 "KeepLast": true
             }
@@ -72,72 +73,12 @@
             }
         ]
     },
-    "unrealized_value":
-    {
-        "ColumnNamePattern":
-        [
-            {
-                "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value"],
-                "Method": "Match",
-                "LookAround": "Unrealized",
-                "Priority": 1,
-                "KeepLast": true
-            },
-            {
-                "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value"],
-                "Method": "Contain",
-                "LookAround": "Unrealized",
-                "Priority": 2,
-                "KeepLast": true
-            }
-        ]
-    },
-    "realized_value":
-    {
-        "ColumnNamePattern":
-        [
-            {
-                "Patterns": ["Proceeds", "Realized Value"],
-                "Method": "Contain",
-                "LookAround": "Realized",
-                "Priority": 1
-            },
-            {
-                "Patterns": ["Realized"],
-                "Method": "Match",
-                "Priority": 2
-            }
-        ]
-
-    },
-    "total":
-    {
-        "ColumnNamePattern":
-        [
-            {
-                "Patterns": ["Total", "Total Value"],
-                "Method": "Match",
-                "Priority": 1
-            },
-            {
-                "Patterns": ["Total Realized .* Unrealized .*"],
-                "Method": "Match",
-                "isRegex": true,
-                "Priority": 1
-            },
-            {
-                "Patterns": ["Total"],
-                "Method": "Contain",
-                "Priority": 2
-            }
-        ]
-    },
     "gross_moic":
     {
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Gross MOIC", "Investment Multiple"],
+                "Patterns": ["Gross MOIC", "Investment Multiple", "Gross Multiple"],
                 "Method": "Contain",
                 "Priority": 1
             },
@@ -159,6 +100,67 @@
             },
             {
                 "Patterns": ["IRR"],
+                "Method": "Contain",
+                "Priority": 2
+            }
+        ]
+    },
+    "realized_value":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Proceeds", "Realized Value", "Amount Realized", "Valuation Realized", "Unrealized Gain"],
+                "Method": "Contain",
+                "LookAround": "Realized",
+                "Priority": 1
+            },
+            {
+                "Patterns": ["Realized"],
+                "Method": "Match",
+                "Priority": 2
+            }
+        ]
+    },
+
+    "unrealized_value":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value"],
+                "Method": "Match",
+                "LookAround": "Unrealized",
+                "Priority": 1,
+                "KeepLast": true
+            },
+            {
+                "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value", "Unrealized Gain"],
+                "Method": "Contain",
+                "LookAround": "Unrealized",
+                "Priority": 2,
+                "KeepLast": true
+            }
+        ]
+    },
+    
+    "total":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Total", "Total Value", "Total Realized .* Unrealized .*"],
+                "Method": "Match",
+                "isRegex": true,
+                "Priority": 1
+            },
+            {
+                "Patterns": ["Total Value"],
+                "Method": "Contain",
+                "Priority": 1
+            },
+            {
+                "Patterns": ["Total"],
                 "Method": "Contain",
                 "Priority": 2
             }
