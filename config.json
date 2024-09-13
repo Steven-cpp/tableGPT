@@ -105,22 +105,6 @@
             }
         ]
     },
-    "realized_value":
-    {
-        "ColumnNamePattern":
-        [
-            {
-                "Patterns": ["Proceeds", "Realized Value", "Amount Realized", "Valuation Realized", "Unrealized Gain"],
-                "Method": "Contain",
-                "Priority": 1
-            },
-            {
-                "Patterns": ["Realized"],
-                "Method": "Match",
-                "Priority": 2
-            }
-        ]
-    },
 
     "unrealized_value":
     {
@@ -137,6 +121,23 @@
                 "Method": "Contain",
                 "Priority": 2,
                 "KeepLast": true
+            }
+        ]
+    },
+
+    "realized_value":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Proceeds", "Realized Value", "Amount Realized", "Valuation Realized", "Unrealized Gain"],
+                "Method": "Contain",
+                "Priority": 1
+            },
+            {
+                "Patterns": ["Realized"],
+                "Method": "Match",
+                "Priority": 2
             }
         ]
     },
