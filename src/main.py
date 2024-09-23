@@ -277,11 +277,15 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     # Azure will create an index column for all the csvs
     if PDF_EXTRACTION_API == 'Azure':
         df = df.drop(columns=df.columns[0])
-
+    
     ## 0. Restore the continued table if it does not have header
     invalid_cols = [col for col in df.columns if not __is_valid_column_name(col)]
     if len(invalid_cols) > 0:
         raise InvalidTableWarning()
+    mask_empty_cols = df.columns.str.contains('Unnamed')
+    if sum(mask_empty_cols) >= len(mask_empty_cols) - 1:
+        df.columns = df.iloc[0, :].fillna('')
+        df = df.iloc[1:, :].reset_index(drop=True)
 
     ## 1. Column Name Cleaning
     # If the column row is mis-identified, then the label
@@ -289,6 +293,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     is_misplaced = __contain_pst_keywords(subheader, rule_config, n=2)
     if is_misplaced:
         df.columns = [df.columns[i] + ' ' + df.iloc[0, i] if type(df.iloc[0, i]) is str else df.columns[i] for i in range(len(df.columns))]
+        df.columns = df.columns.str.strip()
         df = df.drop([0]).reset_index(drop=True)
     # Clear `:unselected:` or `:selected:` from the cell
     for col in df.select_dtypes(include=['object']).columns:
@@ -413,26 +418,26 @@ if __name__ == "__main__":
     ]
 
     test_csv_paths = [
-        './output/docs/05_Francisco Partners IV-A - Q1 2024 - QR.pdf_PST_6.csv'
+        './output/docs/27_Insight Venture Partners Coinvestment Fund II - Q1 2023 - Quarterly Report.pdf_PST_5(1).csv'
     ]
 
-    processed_report_path, metadata = process_docs(report_paths, rule_path)
-    metadata = pd.DataFrame(metadata)
-    metadata['processed_report_path'] = processed_report_path
-    err, csv_records = analyze_layout(processed_report_path, metadata)
-    if err: 
-        print(err)
-        raise RuntimeError()
-    csv_records = pd.DataFrame(csv_records)
-    logging.info('Done: Tables are extracted from PDF files')
-    logging.info(csv_records)
+    # processed_report_path, metadata = process_docs(report_paths, rule_path)
+    # metadata = pd.DataFrame(metadata)
+    # metadata['processed_report_path'] = processed_report_path
+    # err, csv_records = analyze_layout(processed_report_path, metadata)
+    # if err: 
+    #     print(err)
+    #     raise RuntimeError()
+    # csv_records = pd.DataFrame(csv_records)
+    # logging.info('Done: Tables are extracted from PDF files')
+    # logging.info(csv_records)
 
-    logging.info('2. Identifying Portfolio Summary Table')
+    # logging.info('2. Identifying Portfolio Summary Table')
 
-    logging.info('3. Processing the Extracted Table')
+    # logging.info('3. Processing the Extracted Table')
 
-    for csv_path in csv_records['csv_path']:
-    # for csv_path in test_csv_paths:
+    # for csv_path in csv_records['csv_path']:
+    for csv_path in test_csv_paths:
         csv_fn = csv_path.split('\\')[-1]
         error, port, metric_summary = extract_port(rule_path, csv_path)
         if error is None:
