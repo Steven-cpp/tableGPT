@@ -152,7 +152,7 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
 
     # 2. Other Numeric values conversion
     for col in numeric_cols:
-        df[col] = df[col].replace(r'[$,x\s]', '', regex=True)\
+        df[col] = df[col].replace(r'[$,x]', '', regex=True)\
                   .replace(r'\((.+?)\)', r'-\1', regex=True)
         df[col] = pd.to_numeric(df[col], errors='coerce')
     
@@ -408,31 +408,31 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/HongShan Capital Venture Fund IX - Q4 2023 - Letter.pdf',
+        './docs/Insight Venture Partners Coinvestment Fund II - Q1 2023 - Quarterly Report.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/docs/01_Sequoia Capital China Growth Fund III - Q4 2022 - Letter.pdf_PST_3.csv'
+        './output/docs/05_Francisco Partners IV-A - Q1 2024 - QR.pdf_PST_6.csv'
     ]
 
-    # processed_report_path, metadata = process_docs(report_paths, rule_path)
-    # metadata = pd.DataFrame(metadata)
-    # metadata['processed_report_path'] = processed_report_path
-    # err, csv_records = analyze_layout(processed_report_path, metadata)
-    # if err: 
-    #     print(err)
-    #     raise RuntimeError()
-    # csv_records = pd.DataFrame(csv_records)
-    # logging.info('Done: Tables are extracted from PDF files')
-    # logging.info(csv_records)
+    processed_report_path, metadata = process_docs(report_paths, rule_path)
+    metadata = pd.DataFrame(metadata)
+    metadata['processed_report_path'] = processed_report_path
+    err, csv_records = analyze_layout(processed_report_path, metadata)
+    if err: 
+        print(err)
+        raise RuntimeError()
+    csv_records = pd.DataFrame(csv_records)
+    logging.info('Done: Tables are extracted from PDF files')
+    logging.info(csv_records)
 
-    # logging.info('2. Identifying Portfolio Summary Table')
+    logging.info('2. Identifying Portfolio Summary Table')
 
-    # logging.info('3. Processing the Extracted Table')
+    logging.info('3. Processing the Extracted Table')
 
-    # for csv_path in csv_records['csv_path']:
-    for csv_path in test_csv_paths:
+    for csv_path in csv_records['csv_path']:
+    # for csv_path in test_csv_paths:
         csv_fn = csv_path.split('\\')[-1]
         error, port, metric_summary = extract_port(rule_path, csv_path)
         if error is None:
