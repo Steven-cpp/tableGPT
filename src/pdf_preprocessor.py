@@ -86,7 +86,8 @@ def insert_header(page, spans_top, last_spans_top, rule_config):
         metric, _ = __contain_pst_keyword(span['text'], rule_config, target_metrics, ignore_word=False)
         if metric:
             spans_header.append(span)
-            target_metrics.remove(metric)
+            if metric != 'distributed':
+                target_metrics.remove(metric)
 
     # 3. Insert all these bboxes just above the horizontal line
     for span in spans_header:
@@ -120,6 +121,8 @@ def __contain_pst_keyword(s: str, rule_config: dict, target_metrics: list, ignor
     for idx, metric in enumerate(rule_config):
         if metric not in target_metrics:
             continue
+        if 'distributed' in s.lower():
+            return 'distributed', 'distributed'
         rule = rule_config[metric]
         if 'ColumnNamePattern' not in rule:
             continue
@@ -148,7 +151,7 @@ def contain_pst_keywords(page, rule_config, n=3) -> bool:
             * False: keywords not sufficient, ignore this page
     """
     target_metrics = ['total_cost', 'unrealized_value', 'realized_value', 'total', 'gross_moic']
-    top_at = 1/6
+    top_at = 1/4
     cnt = 0
 
     # Capture all the texts within the `top_at` region
@@ -258,7 +261,7 @@ def process_page(page, new_doc, rule_config, last_page_tail, last_page_top):
                     continue
                 for span in line["spans"]:
                     # Check for watermark properties
-                    if "confidential" not in span["text"].lower() and "@sofinagroup" not in span["text"].lower() and span["size"] < 20:
+                    if "confidential" not in span["text"].lower() and "@sofinagroup" not in span["text"].lower() and span["size"] < 20 and span['color'] != 16777215:
                         # Add the span text to the new page
                         spans.append(span)
                         rec = pymupdf.Rect(span["bbox"][0], span["bbox"][1], span["bbox"][2], span["bbox"][3])
