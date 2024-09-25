@@ -25,7 +25,7 @@ import os
 sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedule']
 pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently in the portfolio', 'investments as of',
                 'investment multiple and gross irr', 'portfolio company summary', 'investment performance', 
-                'portfolio company summaries', 'portfolio valuations by company']
+                'portfolio company summaries', 'portfolio valuations by company', 'portfolio highlights']
 
 
 def __is_continuation(spans_1: list, spans_2: list, n: int) -> bool:
@@ -159,7 +159,7 @@ def contain_pst_keywords(page, rule_config, n=3) -> bool:
     text_blocks = page.get_text('dict')['blocks']
     for block in text_blocks:
         if "bbox" in block and block['bbox'][1] > page.rect.height * top_at:
-            break
+            continue
         if "lines" in block:
             for line in block['lines']:
                 if not (abs(line['dir'][0] - 1) < 0.01 or abs(line['dir'][0] - 0) < 0.01 or abs(line['dir'][0] + 1) < 0.01):

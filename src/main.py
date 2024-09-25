@@ -92,7 +92,7 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: the original df with a new `isTotal` column
     """
-    rule_contain = ['Total Investments', 'Total Portfolio Investments', 'Total Portfolio', 'Total Unrealized +']
+    rule_contain = ['Total Investments', 'Total Portfolio Investments', 'Total Portfolio', 'Total Unrealized +', 'Total Fund']
     rule_equal = ['Total', '', 'Totals']
     # Check last two rows only
     rule_lastNRows = 2
@@ -283,7 +283,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     if len(invalid_cols) > 0:
         raise InvalidTableWarning()
     mask_empty_cols = df.columns.str.contains('Unnamed')
-    if sum(mask_empty_cols) >= len(mask_empty_cols) - 1:
+    if sum(mask_empty_cols) >= len(mask_empty_cols):
         df.columns = df.iloc[0, :].fillna('')
         df = df.iloc[1:, :].reset_index(drop=True)
 
@@ -295,10 +295,14 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
         df.columns = [df.columns[i] + ' ' + df.iloc[0, i] if type(df.iloc[0, i]) is str else df.columns[i] for i in range(len(df.columns))]
         df.columns = df.columns.str.strip()
         df = df.drop([0]).reset_index(drop=True)
+    
+    # Make sure there are no duplicate column names
+    if sum(df.columns.duplicated()) > 1:
+        raise InvalidTableWarning()
+
     # Clear `:unselected:` or `:selected:` from the cell
     for col in df.select_dtypes(include=['object']).columns:
-        df[col] = df[col].str.replace(':unselected:', '')
-        df[col] = df[col].str.replace(':selected:', '')
+        df[col] = df[col].str.replace(':unselected:', '').str.replace(':selected:', '')
     
     df.columns = df.columns.str.replace('*', '', regex=False)
     df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
@@ -413,31 +417,31 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Insight Venture Partners Coinvestment Fund II - Q1 2023 - Quarterly Report.pdf',
+        './docs/Francisco Partners II Q1 2024 QR.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/docs/27_Insight Venture Partners Coinvestment Fund II - Q1 2023 - Quarterly Report.pdf_PST_5(1).csv'
+        './output/docs/09_Iconiq Strategic Partners-B - Q4 2022 - AFS.pdf_SIT_9.csv'
     ]
 
-    # processed_report_path, metadata = process_docs(report_paths, rule_path)
-    # metadata = pd.DataFrame(metadata)
-    # metadata['processed_report_path'] = processed_report_path
-    # err, csv_records = analyze_layout(processed_report_path, metadata)
-    # if err: 
-    #     print(err)
-    #     raise RuntimeError()
-    # csv_records = pd.DataFrame(csv_records)
-    # logging.info('Done: Tables are extracted from PDF files')
-    # logging.info(csv_records)
+    processed_report_path, metadata = process_docs(report_paths, rule_path)
+    metadata = pd.DataFrame(metadata)
+    metadata['processed_report_path'] = processed_report_path
+    err, csv_records = analyze_layout(processed_report_path, metadata)
+    if err: 
+        print(err)
+        raise RuntimeError()
+    csv_records = pd.DataFrame(csv_records)
+    logging.info('Done: Tables are extracted from PDF files')
+    logging.info(csv_records)
 
     # logging.info('2. Identifying Portfolio Summary Table')
 
     # logging.info('3. Processing the Extracted Table')
 
-    # for csv_path in csv_records['csv_path']:
-    for csv_path in test_csv_paths:
+    for csv_path in csv_records['csv_path']:
+    # for csv_path in test_csv_paths:
         csv_fn = csv_path.split('\\')[-1]
         error, port, metric_summary = extract_port(rule_path, csv_path)
         if error is None:
