@@ -26,6 +26,24 @@
             }
         ]
     },
+
+    "gross_moic":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["Gross MOIC", "Investment Multiple", "Gross Multiple"],
+                "Method": "Contain",
+                "Priority": 1
+            },
+            {
+                "Patterns": ["MOIC", "Multiple"],
+                "Method": "Contain",
+                "Priority": 2
+            }
+        ]
+    },
+    
     "total_cost":
     {
         "ColumnNamePattern":
@@ -73,22 +91,7 @@
             }
         ]
     },
-    "gross_moic":
-    {
-        "ColumnNamePattern":
-        [
-            {
-                "Patterns": ["Gross MOIC", "Investment Multiple", "Gross Multiple"],
-                "Method": "Contain",
-                "Priority": 1
-            },
-            {
-                "Patterns": ["MOIC", "Multiple"],
-                "Method": "Contain",
-                "Priority": 2
-            }
-        ]
-    },
+
     "gross_irr":
     {
         "ColumnNamePattern":
