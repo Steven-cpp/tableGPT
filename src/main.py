@@ -133,15 +133,17 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
             df = extend_company_name(df)
 
     numeric_cols = df.columns.drop([COMPANY_NAME_COL, SECURITY_TYPE_COL, INVESTMENT_DATE], errors="ignore")
-    
+
     def transform_ownership(s):
         if isinstance(s, str) and '%' in s:
             s = s.replace('%', '')
-            s = re.sub(r'[\[\]]', '', s)
+            s = re.sub(r'[\[\]·]', '', s)
             s = re.sub(r'\((.+?)\)', r'-\1', s)
-            return float(s) / 100
-        else:
-            return np.nan
+            try:
+                return float(s) / 100
+            except:
+                return np.nan
+        return np.nan
 
     # 1. Convert percentage to floating number
     if 'ownership' in df.columns:
@@ -417,7 +419,7 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Francisco Partners II Q1 2024 QR.pdf',
+        './docs/Francisco Partners III - Q4 2023 - Annual Report.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
