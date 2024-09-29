@@ -163,7 +163,8 @@
             {
                 "Patterns": ["Total"],
                 "Method": "Contain",
-                "Priority": 2
+                "Priority": 2,
+                "KeepLast": true
             }
         ]
     }
