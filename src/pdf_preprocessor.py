@@ -262,7 +262,7 @@ def process_page(page, new_doc, rule_config, last_page_tail, last_page_top):
                 for span in line["spans"]:
                     # Check for watermark properties
                     if ("confidential" not in span["text"].lower() and "@sofinagroup" not in span["text"].lower() 
-                        and span["size"] < 20 and span['color'] != 16777215 and "CURRENT FAIR VALUE" not in span["text"]
+                        and span["size"] < 20 and "CURRENT FAIR VALUE" not in span["text"]
                         and 'CURRENT\xa0FAIR\xa0VALUE' not in span['text']):
                         # Add the span text to the new page
                         spans.append(span)
