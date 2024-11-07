@@ -321,7 +321,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     for i in range(strip_columns_n):
         # 2. AND many missing values in the first column
         cnt_nan = df.iloc[:, 0].isna()
-        is_mostly_empty = sum(cnt_nan) / len(cnt_nan) > 0.3
+        is_mostly_empty = sum(cnt_nan) / len(cnt_nan) > 0.3 and sum(cnt_nan) > 3
         # 3. Do the strip
         if not is_layered and is_mostly_empty:
             df = df.iloc[:, 1:]
@@ -419,12 +419,12 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Francisco Partners III - Q4 2023 - Annual Report.pdf',
+        './docs/Lightspeed China Partners Select I, L.P. Q2 2024 - QR.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/docs/09_Iconiq Strategic Partners-B - Q4 2022 - AFS.pdf_SIT_9.csv'
+        './output/docs/34_Battery Ventures Select Fund II - Q4 2023 - Annual Report.pdf_PST_9.csv'
     ]
 
     processed_report_path, metadata = process_docs(report_paths, rule_path)
