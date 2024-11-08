@@ -29,20 +29,19 @@ def extend_company_name(df: pd.DataFrame) -> pd.DataFrame:
     row_id = 0
     df['company_name'] = df['company_name'].fillna(value='')
     df['security_type'] = df['security_type'].fillna(value='')
-    while row_id < len(df):
+    while row_id < len(df) - 1:
         company_name = ''
         start = row_id
-        while df.loc[row_id, 'security_type'] != '':
+        while df.loc[row_id + 1, 'security_type'] != '' and len(df.loc[row_id + 1, 'company_name']) < 4:
             company_name += df.loc[row_id, 'company_name']
             row_id += 1
-            if row_id >= len(df):
+            if row_id >= len(df) - 1:
                 break
         company_name += ' ' + df.loc[row_id, 'company_name']
         if start < row_id:
-            df.loc[row_id, 'company_name'] = ''
+            df.loc[row_id + 1, 'company_name'] = ''
 
-        df.loc[start:row_id-1, 'company_name'] = company_name.strip()
-
+        df.loc[start:row_id, 'company_name'] = company_name.strip()
         row_id += 1
     return df
 
@@ -124,12 +123,12 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     pat_series = 'Series [A-Z](?:-\d+)?|Class [A-Z]|Common Stock|Preferred Stock'
     is_layered = df.apply(lambda x: x.str.contains(pat_series, regex=True, case=False).any()\
                           if x.dtype == 'O' else False, axis=0).any()
-    if is_layered:
+    if is_layered or SECURITY_TYPE_COL in df.columns:
         if SECURITY_TYPE_COL not in df.columns:
-            # 0. Extract hidden security type as a separate column first
+            # Extract hidden security type as a separate column first
             df = extract_hidden_security_type(df)
         else:
-            # 0. Fill empty company name
+            # Fill empty company name
             df = extend_company_name(df)
 
     numeric_cols = df.columns.drop([COMPANY_NAME_COL, SECURITY_TYPE_COL, INVESTMENT_DATE], errors="ignore")
@@ -280,7 +279,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     if PDF_EXTRACTION_API == 'Azure':
         df = df.drop(columns=df.columns[0])
     
-    ## 0. Restore the continued table if it does not have header
+    ## 0. Check if the header is invalid
     invalid_cols = [col for col in df.columns if not __is_valid_column_name(col)]
     if len(invalid_cols) > 0:
         raise InvalidTableWarning()
@@ -309,9 +308,6 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     df.columns = df.columns.str.replace('*', '', regex=False)
     df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
 
-    # Ignore empty column names
-    df = df.loc[:, ~df.columns.isna()]
-
     # Left strip irrelevant columns
     # 1. Not SIT Table
     pat_series = 'Series [A-Z](?:-\d+)?|Class [A-Z]|Common Stock|Preferred Stock'
@@ -321,9 +317,10 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     for i in range(strip_columns_n):
         # 2. AND many missing values in the first column
         cnt_nan = df.iloc[:, 0].isna()
-        is_mostly_empty = sum(cnt_nan) / len(cnt_nan) > 0.3 and sum(cnt_nan) > 3
+        is_mostly_empty = sum(cnt_nan) / len(cnt_nan) > 0.5 and sum(cnt_nan) > 3
+        is_company_col = 'company' in df.columns[0].lower()
         # 3. Do the strip
-        if not is_layered and is_mostly_empty:
+        if not is_layered and is_mostly_empty and not is_company_col:
             df = df.iloc[:, 1:]
             continue
         break
@@ -334,12 +331,16 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     # If the totals are split into a separate column,
     # try to append this column into the left column.
     mask_interpolated = ~df.iloc[:, 0].isna() & ~df.iloc[:, 1].isna()
-    if sum(mask_interpolated) == 0:
+    if sum(mask_interpolated) == 0 and not is_company_col:
         # Merge strings in 1st column and 2nd column
         mask_to_merge = ~df.iloc[:, 1].isna()
         df.loc[mask_to_merge, df.columns[0]] = df.loc[mask_to_merge, df.columns[1]]
         # Now drop the second column since it's merged into the first
         df.drop(df.columns[1], axis=1, inplace=True)
+
+
+    # 3. Fill empty column names with `Unnamed: {idx}`
+    df.columns = df.columns.fillna('Unnamed: ' + df.columns.to_series().astype(str))
 
     res = pd.DataFrame()
     metric_dict = {
@@ -419,31 +420,31 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Lightspeed China Partners Select I, L.P. Q2 2024 - QR.pdf',
+        './docs/Institutional Venture Partners XVI - Q1 2023 - Quarterly Report.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/docs/34_Battery Ventures Select Fund II - Q4 2023 - Annual Report.pdf_PST_9.csv'
+        './output/docs/01_Institutional Venture Partners XVI - Q1 2023 - Quarterly Report.pdf_SIT_5.csv'
     ]
 
-    processed_report_path, metadata = process_docs(report_paths, rule_path)
-    metadata = pd.DataFrame(metadata)
-    metadata['processed_report_path'] = processed_report_path
-    err, csv_records = analyze_layout(processed_report_path, metadata)
-    if err: 
-        print(err)
-        raise RuntimeError()
-    csv_records = pd.DataFrame(csv_records)
-    logging.info('Done: Tables are extracted from PDF files')
-    logging.info(csv_records)
+    # processed_report_path, metadata = process_docs(report_paths, rule_path)
+    # metadata = pd.DataFrame(metadata)
+    # metadata['processed_report_path'] = processed_report_path
+    # err, csv_records = analyze_layout(processed_report_path, metadata)
+    # if err: 
+    #     print(err)
+    #     raise RuntimeError()
+    # csv_records = pd.DataFrame(csv_records)
+    # logging.info('Done: Tables are extracted from PDF files')
+    # logging.info(csv_records)
 
     # logging.info('2. Identifying Portfolio Summary Table')
 
     # logging.info('3. Processing the Extracted Table')
 
-    for csv_path in csv_records['csv_path']:
-    # for csv_path in test_csv_paths:
+    # for csv_path in csv_records['csv_path']:
+    for csv_path in test_csv_paths:
         csv_fn = csv_path.split('\\')[-1]
         error, port, metric_summary = extract_port(rule_path, csv_path)
         if error is None:
