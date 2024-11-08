@@ -9,9 +9,15 @@ def check_p1(df: pd.DataFrame, config: dict, metric: str) -> pd.Series | None:
     rules = config[metric]
     if 'ColumnIndex' in rules:
         return df.iloc[:, rules['ColumnIndex']]
+    
     namePattern = rules['ColumnNamePattern']
+    valuePattern = rules['ColumnValuePattern'] if 'ColumnValuePattern' in rules else None
     
     options = check_rule(df, namePattern, type="name", p=1)
+
+    if options is None and valuePattern is not None:
+        options = check_rule(df, valuePattern, type="value", p=1)
+
     if options is None or len(options.columns) == 0:
         return None
     
@@ -85,8 +91,30 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
         case _:
             raise ValueError(f"Invalid method: {rule['Method']}")
 
-    if 'KeepLast' in rule and len(filtered_cols) > 1:
-        filtered_cols = [filtered_cols[-1]] if rule['KeepLast'] else [filtered_cols[0]]
+    if "Conflict" in rule and len(filtered_cols) > 1:
+        if rule["Conflict"] == "KeepLast":
+            filtered_cols = [filtered_cols[-1]]
+        elif rule["Conflict"] == "KeepMost":
+            # 1. Convert the `filtered_cols` to numeric series
+            numeric_df = df[filtered_cols]
+            for col in numeric_df:
+                numeric_df[col] = df[col].replace(r'[$,x]', '', regex=True)\
+                        .replace(r'\((.+?)\)', r'-\1', regex=True)
+                numeric_df[col] = pd.to_numeric(numeric_df[col], errors='coerce')
+            # 2. Find the column with the most non-null values
+            non_null_counts = numeric_df.count()
+            
+            is_top1 = sum(non_null_counts == non_null_counts.max()) == 1
+            if is_top1:
+                # 3.1 If only one column has the largest non-null value, return it
+                filtered_cols = [non_null_counts.idxmax()]
+            else:
+                # 3.2 If multiple columns share the same largest non-null values, return the one with the largest sum
+                sums = numeric_df.sum()
+                filtered_cols = [sums.idxmax()]
+            
+        else:
+            raise ValueError(f"Invalid conflict resolution: {rule['Conflict']}")
 
     ## Look around neighbors. We do not need `LookAround` since this part is largely done in preprocessing
     # if 'LookAround' in rule:
@@ -123,4 +151,23 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
     return df[filtered_cols]
         
 def __check_rule_value(df: pd.DataFrame, rule: dict) -> pd.DataFrame | None:
-    return df
+    missing_fields = [field for field in req_fields if field not in rule]
+    if missing_fields:
+        raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+    
+    patterns = [p.lower() for p in rule['Patterns']]
+    thresh = rule['Threshold']
+    filtered_cols = []
+
+    for col in df.select_dtypes(include='object').columns:
+        matches = df[col].str.contains('|'.join(patterns), case=False).fillna(False)
+        if sum(matches) >= thresh:
+            filtered_cols.append(col)
+
+    if len(filtered_cols) == 0:
+        return None
+    # If there are multiple columns get matched, raise ValueError
+    if len(filtered_cols) > 1:
+        raise ValueError(f'Multiple columns with the same number of matches: {filtered_cols}')
+    
+    return df[filtered_cols]
