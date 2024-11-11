@@ -68,10 +68,12 @@ def extract_hidden_security_type(df: pd.DataFrame) -> pd.DataFrame:
             parent = row.iloc[0]
         else:
             if parent == '':
-                raise UnsupportedC2ReportTypeWarning("No parent detected for the security type.")
+                continue
+                # raise UnsupportedC2ReportTypeWarning("No parent detected for the security type.")
             row_dict = row.to_dict()
             if row[[COMPANY_NAME_COL]].isna().iloc[0]:
-                continue
+                parent = ''
+                row_dict[COMPANY_NAME_COL] = ''
             if 'total' in row_dict[COMPANY_NAME_COL].lower():
                 res_dicts.append(row_dict)
                 continue
@@ -81,6 +83,37 @@ def extract_hidden_security_type(df: pd.DataFrame) -> pd.DataFrame:
     
     return pd.DataFrame(data=res_dicts)
 
+
+def __preprocess_total_sit(df: pd.DataFrame) -> pd.DataFrame:
+    """Identify company-level total line in the SIT, fill `company_name` and set `is_total`
+    Therefore, the subtotal line can be easily idenfitied by `is_total=True` and `row_id` < MAX(row_id)
+
+    Basis:
+        The company-level total line is right above the next company
+        with both `company_name` and `security_type` empty
+
+    Args:
+        df (pd.DataFrame): _description_
+
+    Returns:
+        pd.DataFrame: _description_
+    """
+    row_id = 0
+    LEN_COMPANY_NAME_MIN = 4
+    while row_id < len(df) - 2:
+        company_name = ''
+        while not pd.isna(df.loc[row_id, 'security_type']) and df.loc[row_id, 'security_type'] != '':
+            company_name = df.loc[row_id, 'company_name']
+            row_id += 1
+            # We stop at the last 3rd row, to ensure we do not check the last row
+            if row_id >= len(df) - 3:
+                break
+        next_company_name = df.loc[row_id + 1, 'company_name']
+        if df.loc[row_id, 'company_name'] == '' and len(next_company_name) > LEN_COMPANY_NAME_MIN and 'total' not in next_company_name.lower():
+            df.loc[row_id, 'is_total'] = True
+            df.loc[row_id, 'company_name'] = company_name
+        row_id += 1
+    return df
 
 def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
     """Identify total line in the table, and set `isTotal` column
@@ -106,7 +139,6 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
         is_equal = any(s.lower() == header for s in rule_equal)
         return is_contain or is_equal
 
-    df['is_total'] = False
     for i in range(rule_lastNRows):
         idx = - (i + 1)
         if idx < -len(df):
@@ -120,7 +152,7 @@ def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
 
 # Clean the extracted table to be consumed
 def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
-    pat_series = 'Series [A-Z](?:-\d+)?|Class [A-Z]|Common Stock|Preferred Stock'
+    pat_series = 'Series [A-Z](?:-\d+)?|Class [A-Z]|Common Stock|Preferred'
     is_layered = df.apply(lambda x: x.str.contains(pat_series, regex=True, case=False).any()\
                           if x.dtype == 'O' else False, axis=0).any()
     if is_layered or SECURITY_TYPE_COL in df.columns:
@@ -130,6 +162,10 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
         else:
             # Fill empty company name
             df = extend_company_name(df)
+    
+    df['is_total'] = False
+    if SECURITY_TYPE_COL in df.columns:
+        df = __preprocess_total_sit(df)
 
     numeric_cols = df.columns.drop([COMPANY_NAME_COL, SECURITY_TYPE_COL, INVESTMENT_DATE], errors="ignore")
 
@@ -284,6 +320,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     if len(invalid_cols) > 0:
         raise InvalidTableWarning()
     mask_empty_cols = df.columns.str.contains('Unnamed')
+    df.columns = [col if not mask_empty_cols[i] else '' for i, col in enumerate(df.columns)]
     if sum(mask_empty_cols) >= len(mask_empty_cols):
         df.columns = df.iloc[0, :].fillna('')
         df = df.iloc[1:, :].reset_index(drop=True)
@@ -340,7 +377,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
 
 
     # 3. Fill empty column names with `Unnamed: {idx}`
-    df.columns = df.columns.fillna('Unnamed: ' + df.columns.to_series().astype(str))
+    df.columns = [col if isinstance(col, str) and col != '' else 'Unnamed: ' + str(idx) for idx, col in enumerate(df.columns)]
 
     res = pd.DataFrame()
     metric_dict = {
@@ -420,12 +457,12 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Institutional Venture Partners XVI - Q1 2023 - Quarterly Report.pdf',
+        './docs/The Founders Fund VIII - Q1 2024 - QR.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/docs/01_Institutional Venture Partners XVI - Q1 2023 - Quarterly Report.pdf_SIT_5.csv'
+        './output/docs/04_LocalGlobe VIII - Q4 2023 - AFS.pdf_PST_31.csv'
     ]
 
     # processed_report_path, metadata = process_docs(report_paths, rule_path)
