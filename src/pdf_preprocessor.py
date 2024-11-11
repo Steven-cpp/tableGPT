@@ -25,7 +25,7 @@ import os
 sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedule']
 pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently in the portfolio', 'investments as of',
                 'investment multiple and gross irr', 'portfolio company summary', 'investment performance', 
-                'portfolio company summaries', 'portfolio valuations by company', 'portfolio highlights']
+                'portfolio company summaries', 'portfolio valuations by company', 'portfolio highlights', 'core investments']
 
 
 def __is_continuation(spans_1: list, spans_2: list, n: int) -> bool:
@@ -72,9 +72,17 @@ def insert_header(page, spans_top, last_spans_top, rule_config):
     y = 0
     spans_header = []
     target_metrics = ['ownership', 'total_cost', 'unrealized_value', 'realized_value']
+    
+    def is_numeric(s: str) -> bool:
+        try:
+            float(s.replace('$', '').replace(',', ''))
+            return True
+        except ValueError:
+            return False
+        
     # 1. Find the horizontal line to insert
     for span in spans_top:
-        if span['text'].strip().isnumeric():
+        if is_numeric(span['text']):
             y = int(span['bbox'][1])
             break
     if y <= 0:
