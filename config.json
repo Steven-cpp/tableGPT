@@ -12,6 +12,15 @@
                 "Method": "Contain",
                 "Priority": 1
             }
+        ],
+        "ColumnValuePattern":
+        [
+            {
+                "Patterns": ["Preferred", "Common", "Series"],
+                "Method": "Contain",
+                "Priority": 1,
+                "Threshold": 5
+            }
         ]
     },
     "investment_date":
@@ -49,7 +58,7 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Total Cost", "Total Invested", "Total Basis", "Total Investment", "Cumulative Investment", "Capital Invested"],
+                "Patterns": ["Total Cost", "Cost", "Total Invested", "Total Basis", "Total Investment", "Cumulative Investment", "Capital Invested"],
                 "Method": "Match",
                 "Priority": 1
             },
@@ -57,7 +66,7 @@
                 "Patterns": ["Cost", "Invested", "Basis"],
                 "Method": "Contain",
                 "Priority": 2,
-                "KeepLast": true
+                "Conflict": "KeepMost"
             }
         ]
     },
@@ -66,15 +75,7 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["own"],
-                "Method": "Contain",
-                "Priority": 1
-            }
-        ],
-        "ColumnValuePattern":
-        [
-            {
-                "Patterns": ["%"],
+                "Patterns": ["own", "% holding"],
                 "Method": "Contain",
                 "Priority": 1
             }
@@ -114,16 +115,16 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value"],
+                "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value", "Unrealized", "Total Estimated Fair Value"],
                 "Method": "Match",
                 "Priority": 1,
-                "KeepLast": true
+                "Conflict": "KeepLast"
             },
             {
                 "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value", "Unrealized Gain"],
                 "Method": "Contain",
                 "Priority": 2,
-                "KeepLast": true
+                "Conflict": "KeepLast"
             }
         ]
     },
@@ -164,7 +165,7 @@
                 "Patterns": ["Total"],
                 "Method": "Contain",
                 "Priority": 2,
-                "KeepLast": true
+                "Conflict": "KeepLast"
             }
         ]
     }
