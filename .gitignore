@@ -8,3 +8,6 @@ tmp
 output
 *.log
 *.yaml
+*.xlsx
+*.csv
+*.pdf
