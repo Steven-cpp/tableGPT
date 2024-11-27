@@ -24,6 +24,15 @@ class ErrorCode(Exception):
     def __str__(self):
         return f"[{self.code}] {self.level}: {self.description}"
 
+class SPReportDownloadError(ErrorCode):
+    def __init__(self, message):
+        super().__init__("ERR-RP1001", "Error", f"Failed to download this report from SharePoint: {message}.")
+
+class InvalidReportReadError(ErrorCode):
+    def __init__(self, report_path):
+        super().__init__("ERR-RP1002", "Error", f"Failed to read the report: {report_path}.")
+
+
 class FileSizeError(ErrorCode):
     def __init__(self):
         super().__init__("ERR-EX1001", "Error", "File size is larger than 50MB")
