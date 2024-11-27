@@ -197,6 +197,7 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
     doc_map = {
         'report_path': [],
         'report_name': [],
+        'page_count': [],
         'page_ori': [],
         'page_new': [],
         'table_type': [],
@@ -218,13 +219,13 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
             last_page_tail, last_page_top = current_tail, current_top
             if table_type == '':
                 continue
-            update_map(doc_map, report_path=path, report_name=path.split('/')[-1],
+            update_map(doc_map, report_path=path, report_name=path.split('/')[-1], page_count=doc.page_count,
                        page_ori=id+1, page_new=cnt_page+1, table_type=table_type,
                        is_processed=True)
             cnt_page += 1
         # If no SIT or PST tables are identified, also add this report as a reference
         if cnt_page_lst == cnt_page:
-            update_map(doc_map, report_path=path, report_name=path.split('/')[-1],
+            update_map(doc_map, report_path=path, report_name=path.split('/')[-1], page_count=doc.page_count,
                        page_ori=None, page_new=None, table_type=None, is_processed=False)
     if cnt_page == 0:
         return None, None
