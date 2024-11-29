@@ -58,12 +58,12 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Total Cost", "Cost", "Total Invested", "Total Basis", "Total Investment", "Cumulative Investment", "Capital Invested"],
+                "Patterns": ["Total Cost", "Cost", "Total Invested", "Total Basis", "Total Investment", "Capital Invested"],
                 "Method": "Match",
                 "Priority": 1
             },
             {
-                "Patterns": ["Cost", "Invested", "Basis"],
+                "Patterns": ["Cost", "Invested", "Basis", "Cumulative Investment"],
                 "Method": "Contain",
                 "Priority": 2,
                 "Conflict": "KeepMost"
