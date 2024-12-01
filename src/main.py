@@ -32,14 +32,12 @@ def extend_company_name(df: pd.DataFrame) -> pd.DataFrame:
     while row_id < len(df) - 1:
         company_name = ''
         start = row_id
-        while df.loc[row_id + 1, 'security_type'] != '' and len(df.loc[row_id + 1, 'company_name']) < 4:
+        while df.loc[row_id + 1, 'security_type'] != '' and len(df.loc[row_id + 1, 'company_name']) < 2:
             company_name += df.loc[row_id, 'company_name']
             row_id += 1
             if row_id >= len(df) - 1:
                 break
         company_name += ' ' + df.loc[row_id, 'company_name']
-        if start < row_id:
-            df.loc[row_id + 1, 'company_name'] = ''
 
         df.loc[start:row_id, 'company_name'] = company_name.strip()
         row_id += 1
@@ -89,8 +87,10 @@ def __preprocess_total_sit(df: pd.DataFrame) -> pd.DataFrame:
     Therefore, the subtotal line can be easily idenfitied by `is_total=True` and `row_id` < MAX(row_id)
 
     Basis:
-        The company-level total line is right above the next company
+        - The company-level total line is right above the next company
         with both `company_name` and `security_type` empty
+        - The company-level total line is the top line of the company (signaled by Null `security_type`
+        and Not-Null `ownership`)
 
     Args:
         df (pd.DataFrame): _description_
@@ -113,6 +113,16 @@ def __preprocess_total_sit(df: pd.DataFrame) -> pd.DataFrame:
             df.loc[row_id, 'is_total'] = True
             df.loc[row_id, 'company_name'] = company_name
         row_id += 1
+    
+    if 'ownership' not in df.columns:
+        return df
+    
+    df.replace('', np.nan, inplace=True)
+    mask_null_security = df['security_type'].isna()
+    mask_not_null_ownership = df['ownership'].notna()
+    mask_subtotal = mask_null_security & mask_not_null_ownership
+    df.loc[mask_subtotal, 'is_total'] = True
+
     return df
 
 def __preprocess_total(df: pd.DataFrame) -> pd.DataFrame:
@@ -340,7 +350,10 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
 
     # Clear `:unselected:` or `:selected:` from the cell
     for col in df.select_dtypes(include=['object']).columns:
-        df[col] = df[col].str.replace(':unselected:', '').str.replace(':selected:', '')
+        try:
+            df[col] = df[col].str.replace(':unselected:', '').str.replace(':selected:', '')
+        except Exception as e:
+            continue
     
     df.columns = df.columns.str.replace('*', '', regex=False)
     df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
@@ -356,14 +369,16 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
         cnt_nan = df.iloc[:, 0].isna()
         is_mostly_empty = sum(cnt_nan) / len(cnt_nan) > 0.5 and sum(cnt_nan) > 3
         is_company_col = 'company' in df.columns[0].lower()
+        is_invalid_col = sum(pd.to_numeric(df.iloc[:, 0], errors='coerce').notna()) > 2
         # 3. Do the strip
-        if not is_layered and is_mostly_empty and not is_company_col:
+        if is_invalid_col or (not is_layered and is_mostly_empty and not is_company_col):
             df = df.iloc[:, 1:]
             continue
         break
 
     if len(df.columns) < 3:
         return pd.DataFrame(), pd.DataFrame()
+    
     ## 2. Totals row cleaning
     # If the totals are split into a separate column,
     # try to append this column into the left column.
@@ -371,7 +386,8 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     if sum(mask_interpolated) == 0 and not is_company_col:
         # Merge strings in 1st column and 2nd column
         mask_to_merge = ~df.iloc[:, 1].isna()
-        df.loc[mask_to_merge, df.columns[0]] = df.loc[mask_to_merge, df.columns[1]]
+        if mask_to_merge.sum() > 0:
+            df.loc[mask_to_merge, df.columns[0]] = df.loc[mask_to_merge, df.columns[1]]
         # Now drop the second column since it's merged into the first
         df.drop(df.columns[1], axis=1, inplace=True)
 
@@ -457,12 +473,12 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/The Founders Fund VIII - Q1 2024 - QR.pdf',
+        './docs/Source Code Growth Fund I L.P. - Q1 2022 - QR .pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/docs/04_LocalGlobe VIII - Q4 2023 - AFS.pdf_PST_31.csv'
+        './output/docs/01_Source Code Growth Fund I L.P. - Q1 2022 - QR .pdf_SIT_1.csv'
     ]
 
     # processed_report_path, metadata = process_docs(report_paths, rule_path)
