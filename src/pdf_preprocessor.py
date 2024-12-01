@@ -21,11 +21,13 @@ import hashlib
 import logging
 import json
 import os
+import re
 
 sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedule']
 pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently in the portfolio', 'investments as of',
                 'investment multiple and gross irr', 'portfolio company summary', 'investment performance', 
                 'portfolio company summaries', 'portfolio valuations by company', 'portfolio highlights', 'core investments']
+gps_kept = ['Redpoint Ventures']
 
 
 def __is_continuation(spans_1: list, spans_2: list, n: int) -> bool:
@@ -214,8 +216,9 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
             continue
         cnt_page_lst = cnt_page
         last_page_tail, last_page_top = None, None
+        keep_layout = doc if re.search('|'.join(gps_kept), path, re.IGNORECASE) else None
         for id, page in enumerate(doc):
-            table_type, current_tail, current_top = process_page(page, new_doc, rule_config, last_page_tail, last_page_top)
+            table_type, current_tail, current_top = process_page(page, new_doc, rule_config, last_page_tail, last_page_top, keep_layout=keep_layout)
             last_page_tail, last_page_top = current_tail, current_top
             if table_type == '':
                 continue
@@ -235,7 +238,7 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
     return output_path, doc_map
 
 
-def process_page(page, new_doc, rule_config, last_page_tail, last_page_top):
+def process_page(page, new_doc, rule_config, last_page_tail, last_page_top, keep_layout=None):
     page_text_lower = page.get_text().lower().replace('\n', '')
     table_type = ''
     check_continuation = False
@@ -254,6 +257,10 @@ def process_page(page, new_doc, rule_config, last_page_tail, last_page_top):
     
     if len(page_text_lower) < 200:
         return '', None, None
+
+    if keep_layout:
+        new_doc.insert_pdf(keep_layout, from_page=page.number, to_page=page.number)
+        return table_type, None, None
 
     new_page = new_doc.new_page(width=page.rect.width, height=page.rect.height)
     is_rotated_90 = (page.rotation == 90)
