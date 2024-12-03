@@ -73,7 +73,7 @@ def insert_header(page, spans_top, last_spans_top, rule_config):
     """
     y = 0
     spans_header = []
-    target_metrics = ['ownership', 'total_cost', 'unrealized_value', 'realized_value']
+    target_metrics = ['ownership', 'total_cost', 'unrealized_value', 'realized_value', 'gross_moic']
     
     def is_numeric(s: str) -> bool:
         try:
@@ -96,17 +96,27 @@ def insert_header(page, spans_top, last_spans_top, rule_config):
         metric, _ = __contain_pst_keyword(span['text'], rule_config, target_metrics, ignore_word=False)
         if metric:
             spans_header.append(span)
-            if metric != 'distributed':
-                target_metrics.remove(metric)
 
-    # 3. Insert all these bboxes just above the horizontal line
+    # 3. Find the min(x, y) of all left-upper corner and max(x, y) of all right-bottom corner of these bboxes
+    x1, y1, x2, y2 = 0, 0, 0, 0
     for span in spans_header:
-        rec = pymupdf.Rect(span["bbox"][0], span["bbox"][1], span["bbox"][2], span["bbox"][3])
-        if rec.height > rec.width * 1.9:
-            page.insert_text((rec[2] - 2, y - 12), span["text"].replace('$', ''),
+        x1 = min(x1, span['bbox'][0])
+        y1 = min(y1, span['bbox'][1])
+        x2 = max(x2, span['bbox'][2])
+        y2 = max(y2, span['bbox'][3])
+    if x1 >= x2 or y1 >= y2:
+        logging.warning('insert_header(): Failed to find the region to insert')
+        return False
+    
+    # 4. Insert all the bboxes right within this region
+    for span in last_spans_top:
+        if x1 <= span['bbox'][0] and span['bbox'][2] <= x2 and y1 <= span['bbox'][1] and span['bbox'][3] <= y2:
+            rec = pymupdf.Rect(span["bbox"][0], span["bbox"][1], span["bbox"][2], span["bbox"][3])
+            if rec.height > rec.width * 1.9:
+                page.insert_text((rec[2] - 2, y - 12), span["text"].replace('$', ''),
                                 fontsize=span["size"]-0.5, color=(0, 0, 0), rotate=90)
-        else:
-            page.insert_text((rec[0], y - 12), span["text"].replace('$', ''),
+            else:
+                page.insert_text((rec[0], rec[1] - y2 + y - 12), span["text"].replace('$', ''),
                                 fontsize=span["size"]-0.5, color=(0, 0, 0))
         
     return True
@@ -131,8 +141,6 @@ def __contain_pst_keyword(s: str, rule_config: dict, target_metrics: list, ignor
     for idx, metric in enumerate(rule_config):
         if metric not in target_metrics:
             continue
-        if 'distributed' in s.lower():
-            return 'distributed', 'distributed'
         rule = rule_config[metric]
         if 'ColumnNamePattern' not in rule:
             continue
