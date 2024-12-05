@@ -26,7 +26,8 @@ import re
 sit_keywords = ['schedule of investments', 'schedule of portfolio investments', 'investment schedule']
 pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently in the portfolio', 'investments as of',
                 'investment multiple and gross irr', 'portfolio company summary', 'investment performance', 
-                'portfolio company summaries', 'portfolio valuations by company', 'portfolio highlights', 'core investments']
+                'portfolio company summaries', 'portfolio valuations by company', 'portfolio highlights', 'core investments',
+                'summary of investments']
 gps_kept = ['Redpoint Ventures']
 
 
