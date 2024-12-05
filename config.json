@@ -1,4 +1,15 @@
 {  
+    "ownership":
+    {
+        "ColumnNamePattern":
+        [
+            {
+                "Patterns": ["own", "% holding", "Percentage of Equity Interest"],
+                "Method": "Contain",
+                "Priority": 1
+            }
+        ]
+    },
 	"company_name":   
     {  
 		"ColumnIndex": 0
@@ -67,17 +78,6 @@
                 "Method": "Contain",
                 "Priority": 2,
                 "Conflict": "KeepMost"
-            }
-        ]
-    },
-    "ownership":
-    {
-        "ColumnNamePattern":
-        [
-            {
-                "Patterns": ["own", "% holding"],
-                "Method": "Contain",
-                "Priority": 1
             }
         ]
     },

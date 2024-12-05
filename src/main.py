@@ -213,7 +213,7 @@ def preprocess_identified(df: pd.DataFrame) -> pd.DataFrame:
     df = __preprocess_total(df)
 
     # 5. Remove rows of empty company name or contain ['Total', 'Investment']
-    name_mask = df[df.columns[0]].str.contains('Total|Realized', case=False, na=False) | (df.iloc[:, 0].isna())
+    name_mask = df[COMPANY_NAME_COL].str.contains('Total|Realized', case=False, na=False) | (df[COMPANY_NAME_COL].isna())
     real_total_mask = df['is_total']
     df = df[~name_mask | real_total_mask]
     
@@ -362,7 +362,7 @@ def __extract_port(csv_path: str, rule_config: dict) -> tuple[pd.DataFrame, pd.D
     # 1. Not SIT Table
     pat_series = 'Series [A-Z](?:-\d+)?|Class [A-Z]|Common Stock|Preferred Stock'
     is_layered = df.apply(lambda x: x.str.contains(pat_series, regex=True, case=False).any()\
-                          if x.dtype == 'O' else False, axis=0).any()
+                          if x.dtype == 'O' else False, axis=0 ).any()
     strip_columns_n = 2
     for i in range(strip_columns_n):
         # 2. AND many missing values in the first column
@@ -473,31 +473,31 @@ if __name__ == "__main__":
     logging.info('1. Extracting Tables from PDF File')
 
     report_paths = [
-        './docs/Source Code Growth Fund I L.P. - Q1 2022 - QR .pdf',
+        './docs/Genesis Capital II - Q1 2022 - FS.pdf',
         # './docs/TA XIV-B Q3 2023 Report.pdf'
     ]
 
     test_csv_paths = [
-        './output/docs/01_Source Code Growth Fund I L.P. - Q1 2022 - QR .pdf_SIT_1.csv'
+        './output/docs/37_INSTITUTIONAL VENTURE PARTNERS XV - Q4 2022 - AFS.pdf_SIT_8.csv'
     ]
 
-    # processed_report_path, metadata = process_docs(report_paths, rule_path)
-    # metadata = pd.DataFrame(metadata)
-    # metadata['processed_report_path'] = processed_report_path
-    # err, csv_records = analyze_layout(processed_report_path, metadata)
-    # if err: 
-    #     print(err)
-    #     raise RuntimeError()
-    # csv_records = pd.DataFrame(csv_records)
-    # logging.info('Done: Tables are extracted from PDF files')
-    # logging.info(csv_records)
+    processed_report_path, metadata = process_docs(report_paths, rule_path)
+    metadata = pd.DataFrame(metadata)
+    metadata['processed_report_path'] = processed_report_path
+    err, csv_records = analyze_layout(processed_report_path, metadata)
+    if err: 
+        print(err)
+        raise RuntimeError()
+    csv_records = pd.DataFrame(csv_records)
+    logging.info('Done: Tables are extracted from PDF files')
+    logging.info(csv_records)
 
-    # logging.info('2. Identifying Portfolio Summary Table')
+    logging.info('2. Identifying Portfolio Summary Table')
 
-    # logging.info('3. Processing the Extracted Table')
+    logging.info('3. Processing the Extracted Table')
 
-    # for csv_path in csv_records['csv_path']:
-    for csv_path in test_csv_paths:
+    for csv_path in csv_records['csv_path']:
+    # for csv_path in test_csv_paths:
         csv_fn = csv_path.split('\\')[-1]
         error, port, metric_summary = extract_port(rule_path, csv_path)
         if error is None:
