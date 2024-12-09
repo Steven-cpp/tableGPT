@@ -72,6 +72,14 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
     isRegex = False if 'isRegex' not in rule else rule['isRegex']
     patterns = [p.lower() for p in rule['Patterns']]
     columns_lower = df.columns.str.lower()
+    df_columns = df.columns
+
+    # 2. Exclude columns that contains `exclude` (only works when `isRegex=False`)
+    if 'Exclude' in rule:
+        exclude = [e.lower() for e in rule['Exclude']]
+        mask_exclude = ~columns_lower.str.contains('|'.join(exclude), case=False)
+        columns_lower = columns_lower[mask_exclude]
+        df_columns = df_columns[mask_exclude]
 
     match rule['Method']:
         case 'Match':
@@ -79,14 +87,14 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
                 regex_patterns = [re.compile(pattern, flags=re.IGNORECASE) for pattern in patterns]
                 filtered_cols = [col for col in df.columns if any(re.fullmatch(regex, col) for regex in regex_patterns)]
             else:
-                filtered_cols = df.columns[columns_lower.isin(patterns)]
+                filtered_cols = df_columns[columns_lower.isin(patterns)]
 
         case 'Contain':
             if isRegex:
                 regex_patterns = [re.compile(pattern, flags=re.IGNORECASE) for pattern in patterns]
                 filtered_cols = [col for col in df.columns if any(re.search(regex, col) for regex in regex_patterns)]
             else:
-                filtered_cols = df.columns[columns_lower.str.contains('|'.join(patterns), case=False)]
+                filtered_cols = df_columns[columns_lower.str.contains('|'.join(patterns), case=False)]
 
         case _:
             raise ValueError(f"Invalid method: {rule['Method']}")
@@ -98,9 +106,9 @@ def __check_rule_name(df: pd.DataFrame, rule: dict, p: int) -> pd.DataFrame | No
             # 1. Convert the `filtered_cols` to numeric series
             numeric_df = df[filtered_cols]
             for col in numeric_df:
-                numeric_df[col] = df[col].replace(r'[$,x]', '', regex=True)\
+                numeric_df.loc[:, col] = df[col].replace(r'[$,x]', '', regex=True)\
                         .replace(r'\((.+?)\)', r'-\1', regex=True)
-                numeric_df[col] = pd.to_numeric(numeric_df[col], errors='coerce')
+                numeric_df.loc[:, col] = pd.to_numeric(numeric_df[col], errors='coerce')
             # 2. Find the column with the most non-null values
             non_null_counts = numeric_df.count()
             
