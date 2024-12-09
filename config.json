@@ -134,7 +134,7 @@
         "ColumnNamePattern":
         [
             {
-                "Patterns": ["Proceeds", "Realized Value", "Amount Realized", "Valuation Realized", "Unrealized Gain"],
+                "Patterns": ["Proceeds", "Realized Value", "Amount Realized", "Valuation Realized"],
                 "Method": "Contain",
                 "Priority": 1
             },
@@ -163,6 +163,7 @@
             },
             {
                 "Patterns": ["Total"],
+                "Exclude": ["Cost", "Fair Value"],
                 "Method": "Contain",
                 "Priority": 2,
                 "Conflict": "KeepLast"
