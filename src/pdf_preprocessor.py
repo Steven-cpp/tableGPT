@@ -29,7 +29,7 @@ pst_keywords = ['portfolio summary', 'active portfolio', 'investments currently 
                 'portfolio company summaries', 'portfolio valuations by company', 'portfolio highlights', 'core investments',
                 'summary of investments']
 gps_kept = ['Redpoint Ventures']
-
+logger = logging.getLogger(__name__)
 
 def __is_continuation(spans_1: list, spans_2: list, n: int) -> bool:
     """ Check if x2 is the continuation of x1 by checking x axis matches
@@ -106,7 +106,7 @@ def insert_header(page, spans_top, last_spans_top, rule_config):
         x2 = max(x2, span['bbox'][2])
         y2 = max(y2, span['bbox'][3])
     if x1 >= x2 or y1 >= y2:
-        logging.warning('insert_header(): Failed to find the region to insert')
+        logger.warning('insert_header(): Failed to find the region to insert')
         return False
     
     # 4. Insert all the bboxes right within this region
@@ -221,7 +221,7 @@ def process_docs(report_paths: list, rule_path, output_dir='./output', fn='repor
         try:
             doc = pymupdf.open(path)
         except Exception as e:
-            logging.warning(f'Failed to read the report: {e}.')
+            logger.warning(f'Failed to read the report: {e}.')
             continue
         cnt_page_lst = cnt_page
         last_page_tail, last_page_top = None, None

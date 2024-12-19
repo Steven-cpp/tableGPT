@@ -2,6 +2,7 @@ import re
 import logging
 import pandas as pd
 
+logger = logging.getLogger(__name__)
 req_fields = ["Patterns", "Method", "Priority"]
 
     
@@ -42,10 +43,10 @@ def check_p2(df: pd.DataFrame, config: dict, metric: str) -> pd.DataFrame | None
 
 def check_rule(df: pd.DataFrame, pat: dict, type: str, p:int) -> pd.DataFrame | None:
     if pat is None:
-        logging.warning('`pat` is None while checking %s rule over %s', type, df.columns)
+        logger.warning('`pat` is None while checking %s rule over %s', type, df.columns)
         return df
     if df is None:
-        logging.warning('`df` is None while checking %s rule %s', type, pat)
+        logger.warning('`df` is None while checking %s rule %s', type, pat)
         return None
     if type.lower() not in ['name', 'value']:
         raise ValueError('Invalid Parameter Type: type should be either `name` or `value`')
@@ -53,7 +54,7 @@ def check_rule(df: pd.DataFrame, pat: dict, type: str, p:int) -> pd.DataFrame | 
         try:
             options = __check_rule_name(df, rule, p=p) if type == 'name' else __check_rule_value(df, rule)
         except Exception as e:
-            logging.error('Check rule name failed, columns: ', df.columns, 'rule: ', rule)
+            logger.error('Check rule name failed, columns: ', df.columns, 'rule: ', rule)
             options = None
         if options is None or len(options.columns) == 0:
             continue
