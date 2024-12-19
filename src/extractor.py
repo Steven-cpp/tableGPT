@@ -10,7 +10,6 @@ from adobe.pdfservices.operation.exception.exceptions import ServiceApiException
 import json
 import os
 import re
-import pandas as pd
 import time
 import zipfile
 import logging
