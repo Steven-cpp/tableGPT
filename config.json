@@ -121,12 +121,14 @@
         [
             {
                 "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value", "Unrealized", "Total Estimated Fair Value"],
+                "Exclude": ["Change"],
                 "Method": "Match",
                 "Priority": 1,
                 "Conflict": "KeepLast"
             },
             {
                 "Patterns": ["Fair Value", "FV", "FMV", "Total Unrealized", "Valuation", "Unrealized Value", "Market Value", "Carrying Value", "Unrealized Gain"],
+                "Exclude": ["Change"],
                 "Method": "Contain",
                 "Priority": 2,
                 "Conflict": "KeepLast"
